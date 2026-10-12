@@ -1,22 +1,8 @@
-require("dotenv").config();
-
 const connectDB = require("./config/db");
+const validateEnvironment = require("./config/env");
 const app = require("./app");
 
 const PORT = process.env.PORT || 5000;
-
-const validateEnvironment = () => {
-  const requiredVariables = ["MONGO_URI", "JWT_SECRET"];
-  const missingVariables = requiredVariables.filter(
-    (variable) => !process.env[variable]
-  );
-
-  if (missingVariables.length > 0) {
-    throw new Error(
-      `Missing required environment variables: ${missingVariables.join(", ")}`
-    );
-  }
-};
 
 const startServer = async () => {
   try {
