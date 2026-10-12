@@ -7,6 +7,7 @@ import {
   philippineProvinces,
 } from '../data/philippineLocations'
 import api from '../services/api'
+import useAuth from '../hooks/useAuth'
 
 const namePattern = /^[\p{L}\s'-]+$/u
 const contactNumberPattern = /^09\d{9}$/
@@ -154,6 +155,7 @@ function FieldError({ message }) {
 }
 
 function PatientForm() {
+  const { user } = useAuth()
   const [formData, setFormData] = useState(initialForm)
   const [fieldErrors, setFieldErrors] = useState({})
   const [isProvinceSelected, setIsProvinceSelected] = useState(false)
@@ -164,6 +166,7 @@ function PatientForm() {
   const navigate = useNavigate()
   const { id } = useParams()
   const isEditMode = Boolean(id)
+  const patientsPath = `/${user.role}/patients`
 
   useEffect(() => {
     if (!isEditMode) {
@@ -350,7 +353,7 @@ function PatientForm() {
         await api.post('/patients', patientData)
       }
 
-      navigate('/patients')
+      navigate(patientsPath)
     } catch (requestError) {
       setError(
         requestError.response?.data?.message || 'Unable to save patient.',
@@ -544,7 +547,7 @@ function PatientForm() {
             <button
               type="button"
               className="button secondary-button"
-              onClick={() => navigate('/patients')}
+              onClick={() => navigate(patientsPath)}
             >
               Cancel
             </button>

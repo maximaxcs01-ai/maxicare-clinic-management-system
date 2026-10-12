@@ -1,17 +1,20 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import AuthenticatedLayout from './components/AuthenticatedLayout'
+import ModulePlaceholder from './components/common/ModulePlaceholder'
 import ProtectedRoute from './components/ProtectedRoute'
+import RoleRoute from './components/RoleRoute'
 import AuthProvider from './context/AuthProvider'
-import Dashboard from './pages/Dashboard'
-import Login from './pages/Login'
+import useAuth from './hooks/useAuth'
 import ForgotPassword from './pages/ForgotPassword'
+import Login from './pages/Login'
 import PatientForm from './pages/PatientForm'
 import Patients from './pages/Patients'
+import Profile from './pages/Profile'
 import Register from './pages/Register'
+import ResetPassword from './pages/ResetPassword'
+import RoleDashboard from './pages/RoleDashboard'
 import VerifyEmail from './pages/VerifyEmail'
 import VerifyResetOtp from './pages/VerifyResetOtp'
-import ResetPassword from './pages/ResetPassword'
-import useAuth from './hooks/useAuth'
 import { getRoleDestination } from './utils/authRoutes'
 import './App.css'
 
@@ -30,35 +33,166 @@ function DefaultRoute() {
   )
 }
 
+function LegacyPatientRoute({ action }) {
+  const { user } = useAuth()
+  const { id } = useParams()
+  const roleHome = getRoleDestination(user?.role)
+  const canManage = ['admin', 'receptionist'].includes(user?.role)
+
+  if (action === 'add' && canManage) {
+    return <Navigate to={`${roleHome}/patients/add`} replace />
+  }
+
+  if (action === 'edit' && canManage && id) {
+    return <Navigate to={`${roleHome}/patients/edit/${id}`} replace />
+  }
+
+  if (['admin', 'receptionist', 'doctor'].includes(user?.role)) {
+    return <Navigate to={`${roleHome}/patients`} replace />
+  }
+
+  return <Navigate to={roleHome} replace />
+}
+
+const placeholder = (title, description) => (
+  <ModulePlaceholder title={title} description={description} />
+)
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <AuthenticatedLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route element={<RoleRoute allowedRoles={['patient']} />}>
+          <Route path="/patient" element={<RoleDashboard />} />
+          <Route
+            path="/patient/appointments"
+            element={placeholder(
+              'Appointments',
+              'Appointment scheduling will be available in a later development phase.',
+            )}
+          />
+          <Route
+            path="/patient/medical-history"
+            element={placeholder(
+              'Medical History',
+              'Your medical history will be available in a later development phase.',
+            )}
+          />
+          <Route
+            path="/patient/prescriptions"
+            element={placeholder(
+              'Prescriptions',
+              'Prescription records will be available in a later development phase.',
+            )}
+          />
+          <Route path="/patient/profile" element={<Profile />} />
+          <Route
+            path="/patient/account-settings"
+            element={placeholder('Account Settings')}
+          />
+        </Route>
+
+        <Route element={<RoleRoute allowedRoles={['receptionist']} />}>
+          <Route path="/receptionist" element={<RoleDashboard />} />
+          <Route path="/receptionist/patients" element={<Patients />} />
+          <Route path="/receptionist/patients/add" element={<PatientForm />} />
+          <Route
+            path="/receptionist/patients/edit/:id"
+            element={<PatientForm />}
+          />
+          <Route
+            path="/receptionist/appointments"
+            element={placeholder('Appointments')}
+          />
+          <Route path="/receptionist/queue" element={placeholder('Queue')} />
+          <Route
+            path="/receptionist/doctors"
+            element={placeholder('Doctors')}
+          />
+          <Route path="/receptionist/profile" element={<Profile />} />
+          <Route
+            path="/receptionist/account-settings"
+            element={placeholder('Account Settings')}
+          />
+        </Route>
+
+        <Route element={<RoleRoute allowedRoles={['doctor']} />}>
+          <Route path="/doctor" element={<RoleDashboard />} />
+          <Route
+            path="/doctor/schedule"
+            element={placeholder('My Schedule')}
+          />
+          <Route path="/doctor/patients" element={<Patients />} />
+          <Route
+            path="/doctor/consultations"
+            element={placeholder('Consultations')}
+          />
+          <Route
+            path="/doctor/prescriptions"
+            element={placeholder('Prescriptions')}
+          />
+          <Route path="/doctor/profile" element={<Profile />} />
+          <Route
+            path="/doctor/account-settings"
+            element={placeholder('Account Settings')}
+          />
+        </Route>
+
+        <Route element={<RoleRoute allowedRoles={['admin']} />}>
+          <Route path="/admin" element={<RoleDashboard />} />
+          <Route path="/admin/patients" element={<Patients />} />
+          <Route path="/admin/patients/add" element={<PatientForm />} />
+          <Route path="/admin/patients/edit/:id" element={<PatientForm />} />
+          <Route path="/admin/doctors" element={placeholder('Doctors')} />
+          <Route
+            path="/admin/appointments"
+            element={placeholder('Appointments')}
+          />
+          <Route path="/admin/services" element={placeholder('Services')} />
+          <Route path="/admin/users" element={placeholder('Users')} />
+          <Route path="/admin/reports" element={placeholder('Reports')} />
+          <Route path="/admin/profile" element={<Profile />} />
+          <Route
+            path="/admin/account-settings"
+            element={placeholder('Account Settings')}
+          />
+        </Route>
+
+        <Route path="/dashboard" element={<DefaultRoute />} />
+        <Route path="/patients" element={<LegacyPatientRoute />} />
+        <Route
+          path="/patients/add"
+          element={<LegacyPatientRoute action="add" />}
+        />
+        <Route
+          path="/patients/edit/:id"
+          element={<LegacyPatientRoute action="edit" />}
+        />
+      </Route>
+
+      <Route path="*" element={<DefaultRoute />} />
+    </Routes>
+  )
+}
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route
-            element={
-              <ProtectedRoute>
-                <AuthenticatedLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/patient" element={<Dashboard />} />
-            <Route path="/receptionist" element={<Dashboard />} />
-            <Route path="/doctor" element={<Dashboard />} />
-            <Route path="/admin" element={<Dashboard />} />
-            <Route path="/patients" element={<Patients />} />
-            <Route path="/patients/add" element={<PatientForm />} />
-            <Route path="/patients/edit/:id" element={<PatientForm />} />
-          </Route>
-          <Route path="*" element={<DefaultRoute />} />
-        </Routes>
+        <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
   )

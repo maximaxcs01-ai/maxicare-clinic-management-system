@@ -22,6 +22,11 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: '"Plus Jakarta Sans", Arial, sans-serif',
+    h4: {
+      fontSize: '1.75rem',
+      fontWeight: 750,
+      letterSpacing: '-0.025em',
+    },
     button: {
       textTransform: 'none',
       fontWeight: 600,
@@ -36,6 +41,23 @@ const theme = createTheme({
     ...Array(23).fill('0 4px 12px rgba(15, 42, 67, 0.08)'),
   ],
   components: {
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          boxShadow: 'none',
+        },
+      },
+    },
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focusVisible': {
+            outline: '3px solid rgba(37, 99, 166, 0.28)',
+            outlineOffset: 2,
+          },
+        },
+      },
+    },
     MuiCard: {
       styleOverrides: {
         root: {
@@ -52,6 +74,20 @@ const theme = createTheme({
       styleOverrides: {
         rounded: {
           borderRadius: 16,
+        },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          transition: 'background-color 150ms ease, color 150ms ease',
+          '&.Mui-selected': {
+            color: '#153b67',
+            backgroundColor: '#edf4fb',
+          },
+          '&.Mui-selected:hover': {
+            backgroundColor: '#e4eff9',
+          },
         },
       },
     },

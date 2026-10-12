@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import useAuth from '../hooks/useAuth'
 import api from '../services/api'
 
 function formatDate(date) {
@@ -35,9 +36,13 @@ function formatAddress(address) {
 }
 
 function Patients() {
+  const { user } = useAuth()
   const [patients, setPatients] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const portalBase = `/${user.role}/patients`
+  const canManage = ['admin', 'receptionist'].includes(user.role)
+  const canDelete = user.role === 'admin'
 
   useEffect(() => {
     let active = true
@@ -96,9 +101,11 @@ function Patients() {
     <section>
       <div className="page-heading-row">
         <h1>Patients</h1>
-        <Link to="/patients/add" className="button primary-button">
-          Add Patient
-        </Link>
+        {canManage && (
+          <Link to={`${portalBase}/add`} className="button primary-button">
+            Add Patient
+          </Link>
+        )}
       </div>
 
       {error && <div className="message error-message">{error}</div>}
@@ -119,7 +126,7 @@ function Patients() {
                   <th>Contact Number</th>
                   <th>Email</th>
                   <th>Address</th>
-                  <th>Actions</th>
+                  {(canManage || canDelete) && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -135,23 +142,29 @@ function Patients() {
                     </td>
                     <td>{patient.email}</td>
                     <td>{formatAddress(patient.address)}</td>
-                    <td>
-                      <div className="table-actions">
-                        <Link
-                          to={`/patients/edit/${patient._id}`}
-                          className="button edit-button"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          type="button"
-                          className="button delete-button"
-                          onClick={() => handleDelete(patient)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+                    {(canManage || canDelete) && (
+                      <td>
+                        <div className="table-actions">
+                          {canManage && (
+                            <Link
+                              to={`${portalBase}/edit/${patient._id}`}
+                              className="button edit-button"
+                            >
+                              Edit
+                            </Link>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className="button delete-button"
+                              onClick={() => handleDelete(patient)}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
