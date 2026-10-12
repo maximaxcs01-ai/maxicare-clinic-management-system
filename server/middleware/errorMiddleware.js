@@ -22,6 +22,11 @@ const errorHandler = (error, req, res, next) => {
     message = "A record with that value already exists";
   }
 
+  if (error.name === "CastError") {
+    statusCode = 404;
+    message = "Record not found";
+  }
+
   if (statusCode >= 500 && !error.isOperational) message = "Server error";
 
   res.status(statusCode).json({ message });

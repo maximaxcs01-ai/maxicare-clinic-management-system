@@ -1,116 +1,85 @@
 const { isCityInProvince } = require("../data/philippineLocations");
 
 const namePattern = /^[\p{L}\s'-]+$/u;
-const contactNumberPattern = /^09\d{9}$/;
+const mobilePattern = /^09\d{9}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const clean = (value) => (typeof value === "string" ? value.trim() : "");
 
-const cleanString = (value) =>
-  typeof value === "string" ? value.trim() : "";
-
-const isValidDateOfBirth = (value) => {
-  if (typeof value !== "string") return false;
-
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return false;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  const today = new Date();
-  const todayValue = `${today.getFullYear()}-${String(
-    today.getMonth() + 1
-  ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day &&
-    value <= todayValue
-  );
+const validDate = (value) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date <= new Date();
 };
 
-const getPatientData = (body = {}) => ({
-  firstName: cleanString(body.firstName),
-  lastName: cleanString(body.lastName),
-  dateOfBirth: body.dateOfBirth,
-  gender: cleanString(body.gender),
-  contactNumber: cleanString(body.contactNumber),
-  mobileNumber: cleanString(body.contactNumber),
-  email: cleanString(body.email).toLowerCase(),
+const buildPatient = (body = {}) => ({
+  firstName: clean(body.firstName), middleName: clean(body.middleName),
+  lastName: clean(body.lastName), suffix: clean(body.suffix),
+  dateOfBirth: body.dateOfBirth, sex: clean(body.sex || body.gender),
+  gender: clean(body.sex || body.gender), email: clean(body.email).toLowerCase(),
+  mobileNumber: clean(body.mobileNumber || body.contactNumber),
+  contactNumber: clean(body.mobileNumber || body.contactNumber),
   address: {
-    street: cleanString(body.address?.street),
-    barangay: cleanString(body.address?.barangay),
-    city: cleanString(body.address?.city),
-    province: cleanString(body.address?.province),
+    street: clean(body.address?.street), barangay: clean(body.address?.barangay),
+    city: clean(body.address?.city), province: clean(body.address?.province),
+    zipCode: clean(body.address?.zipCode),
   },
+  emergencyContact: {
+    firstName: clean(body.emergencyContact?.firstName),
+    lastName: clean(body.emergencyContact?.lastName),
+    relationship: clean(body.emergencyContact?.relationship),
+    mobileNumber: clean(body.emergencyContact?.mobileNumber),
+  },
+  medicalSummary: {
+    bloodType: clean(body.medicalSummary?.bloodType),
+    allergies: clean(body.medicalSummary?.allergies),
+    existingConditions: clean(body.medicalSummary?.existingConditions),
+  },
+  portalStatus: clean(body.portalStatus) || "not_activated",
 });
 
-const validatePatientData = (data) => {
-  if (!data.firstName || !data.lastName) {
-    return "First name and last name are required";
+const validateNames = (data) => {
+  for (const [label, value, required] of [
+    ["First name", data.firstName, true], ["Middle name", data.middleName, false],
+    ["Last name", data.lastName, true],
+  ]) {
+    if (required && !value) return `${label} is required`;
+    if (value && (value.length < 2 || value.length > 50 || !namePattern.test(value))) return `${label} is invalid`;
   }
+  return null;
+};
 
-  if (
-    data.firstName.length < 2 ||
-    data.firstName.length > 50 ||
-    !namePattern.test(data.firstName)
-  ) {
-    return "First name must be 2 to 50 characters and use letters, spaces, hyphens, or apostrophes";
-  }
-
-  if (
-    data.lastName.length < 2 ||
-    data.lastName.length > 50 ||
-    !namePattern.test(data.lastName)
-  ) {
-    return "Last name must be 2 to 50 characters and use letters, spaces, hyphens, or apostrophes";
-  }
-
-  if (!data.dateOfBirth) return "Date of birth is required";
-
-  if (!isValidDateOfBirth(data.dateOfBirth)) {
-    return "Please enter a valid date of birth that is not in the future";
-  }
-
-  if (!["Male", "Female"].includes(data.gender)) {
-    return "Gender must be Male or Female";
-  }
-
-  if (!contactNumberPattern.test(data.contactNumber)) {
-    return "Contact number must be 11 digits and start with 09.";
-  }
-
-  if (!emailPattern.test(data.email)) {
-    return "Please enter a valid email address.";
-  }
-
-  if (
-    !data.address.street ||
-    !data.address.barangay ||
-    !data.address.city ||
-    !data.address.province
-  ) {
-    return "Please complete all address fields";
-  }
-
-  if (!isCityInProvince(data.address.province, data.address.city)) {
-    return "City or municipality does not match the selected province.";
-  }
-
+const validatePatientData = (data, complete) => {
+  const nameError = validateNames(data);
+  if (nameError) return nameError;
+  if (complete && !validDate(data.dateOfBirth)) return "Please enter a valid date of birth that is not in the future";
+  if (data.dateOfBirth && !validDate(data.dateOfBirth)) return "Invalid date of birth";
+  if (complete && !["Male", "Female"].includes(data.sex)) return "Sex must be Male or Female";
+  if (data.sex && !["Male", "Female"].includes(data.sex)) return "Sex must be Male or Female";
+  if (!emailPattern.test(data.email)) return "Please enter a valid email address";
+  if (complete && !mobilePattern.test(data.mobileNumber)) return "Mobile number must be 11 digits and start with 09";
+  if (data.mobileNumber && !mobilePattern.test(data.mobileNumber)) return "Invalid mobile number";
+  if (complete && (!data.address.street || !data.address.barangay || !data.address.city || !data.address.province)) return "Please complete all required address fields";
+  if (data.address.city && data.address.province && !isCityInProvince(data.address.province, data.address.city)) return "City or municipality does not match the selected province";
+  if (data.emergencyContact.mobileNumber && !mobilePattern.test(data.emergencyContact.mobileNumber)) return "Invalid emergency contact mobile number";
+  if (!["not_activated", "invited", "active", "inactive"].includes(data.portalStatus)) return "Invalid portal status";
   return null;
 };
 
 const validatePatient = (req, res, next) => {
-  const patientData = getPatientData(req.body);
-  const validationError = validatePatientData(patientData);
-
-  if (validationError) {
-    return res.status(400).json({ message: validationError });
-  }
-
-  req.validatedPatient = patientData;
+  const data = buildPatient(req.body);
+  const error = validatePatientData(data, true);
+  if (error) return res.status(400).json({ message: error });
+  req.validatedPatient = data;
   next();
 };
 
-module.exports = { validatePatient };
+const validateOwnPatient = (req, res, next) => {
+  const data = buildPatient(req.body);
+  const error = validatePatientData(data, false);
+  if (error) return res.status(400).json({ message: error });
+  delete data.portalStatus;
+  req.validatedPatient = data;
+  next();
+};
+
+module.exports = { validatePatient, validateOwnPatient };

@@ -15,6 +15,9 @@ import ResetPassword from './pages/ResetPassword'
 import RoleDashboard from './pages/RoleDashboard'
 import VerifyEmail from './pages/VerifyEmail'
 import VerifyResetOtp from './pages/VerifyResetOtp'
+import DoctorsManagement from './pages/admin/DoctorsManagement'
+import ServicesManagement from './pages/admin/ServicesManagement'
+import UsersManagement from './pages/admin/UsersManagement'
 import { getRoleDestination } from './utils/authRoutes'
 import './App.css'
 
@@ -156,13 +159,13 @@ function AppRoutes() {
           <Route path="/admin/patients" element={<Patients />} />
           <Route path="/admin/patients/add" element={<PatientForm />} />
           <Route path="/admin/patients/edit/:id" element={<PatientForm />} />
-          <Route path="/admin/doctors" element={placeholder('Doctors')} />
+          <Route path="/admin/doctors" element={<DoctorsManagement />} />
           <Route
             path="/admin/appointments"
             element={placeholder('Appointments')}
           />
-          <Route path="/admin/services" element={placeholder('Services')} />
-          <Route path="/admin/users" element={placeholder('Users')} />
+          <Route path="/admin/services" element={<ServicesManagement />} />
+          <Route path="/admin/users" element={<UsersManagement />} />
           <Route path="/admin/reports" element={placeholder('Reports')} />
           <Route path="/admin/profile" element={<Profile />} />
           <Route

@@ -32,6 +32,8 @@ const patientSchema = new mongoose.Schema(
       default: "",
     },
 
+    suffix: { type: String, trim: true, maxlength: 20, default: "" },
+
     lastName: {
       type: String,
       required: true,
@@ -53,6 +55,8 @@ const patientSchema = new mongoose.Schema(
       type: String,
       enum: ["Male", "Female"],
     },
+
+    sex: { type: String, enum: ["Male", "Female"] },
 
     contactNumber: {
       type: String,
@@ -94,12 +98,27 @@ const patientSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
+
+      zipCode: { type: String, trim: true, maxlength: 10 },
+    },
+
+    emergencyContact: {
+      firstName: { type: String, trim: true },
+      lastName: { type: String, trim: true },
+      relationship: { type: String, trim: true },
+      mobileNumber: { type: String, trim: true, match: /^09\d{9}$/ },
+    },
+
+    medicalSummary: {
+      bloodType: { type: String, trim: true },
+      allergies: { type: String, trim: true },
+      existingConditions: { type: String, trim: true },
     },
 
     portalStatus: {
       type: String,
-      enum: ["active", "inactive"],
-      default: "active",
+      enum: ["not_activated", "invited", "active", "inactive"],
+      default: "not_activated",
     },
   },
   {

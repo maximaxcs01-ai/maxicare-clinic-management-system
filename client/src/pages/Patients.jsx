@@ -1,178 +1,76 @@
+import AddIcon from '@mui/icons-material/Add'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import {
+  Alert, Box, Button, FormControl, IconButton, InputLabel, MenuItem, Pagination,
+  Paper, Select, Snackbar, Stack, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, TextField, Tooltip, Typography,
+} from '@mui/material'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
+import ConfirmDialog from '../components/common/ConfirmDialog'
+import StatusChip from '../components/common/StatusChip'
+import TableState from '../components/common/TableState'
 import useAuth from '../hooks/useAuth'
-import api from '../services/api'
-
-function formatDate(date) {
-  if (!date) return '—'
-  return new Date(date).toLocaleDateString()
-}
-
-function formatAddress(address) {
-  if (typeof address === 'string') {
-    return address
-  }
-
-  if (!address || typeof address !== 'object') {
-    return '—'
-  }
-
-  const barangay = address.barangay
-    ? /^(brgy\.?|barangay)/i.test(address.barangay)
-      ? address.barangay
-      : `Brgy. ${address.barangay}`
-    : ''
-
-  const formattedAddress = [
-    address.street,
-    barangay,
-    address.city,
-    address.province,
-  ]
-    .filter(Boolean)
-    .join(', ')
-
-  return formattedAddress || '—'
-}
+import { deletePatient, getPatients } from '../services/patientApi'
 
 function Patients() {
   const { user } = useAuth()
-  const [patients, setPatients] = useState([])
+  const [rows, setRows] = useState([])
+  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [portalStatus, setPortalStatus] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [reload, setReload] = useState(0)
+  const [confirm, setConfirm] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [notice, setNotice] = useState(null)
   const portalBase = `/${user.role}/patients`
   const canManage = ['admin', 'receptionist'].includes(user.role)
   const canDelete = user.role === 'admin'
 
   useEffect(() => {
     let active = true
-
-    const loadPatients = async () => {
+    const timer = window.setTimeout(async () => {
       try {
-        const response = await api.get('/patients')
+        setLoading(true)
+        const response = await getPatients({ page, limit: 10, search, portalStatus })
+        if (active) { setRows(response.data.data); setPagination(response.data.pagination) }
+      } catch (error) {
+        if (active) setNotice({ severity: 'error', message: error.response?.data?.message || 'Unable to load patients.' })
+      } finally { if (active) setLoading(false) }
+    }, 250)
+    return () => { active = false; window.clearTimeout(timer) }
+  }, [page, search, portalStatus, reload])
 
-        if (active) {
-          setPatients(response.data.patients)
-        }
-      } catch (requestError) {
-        if (active) {
-          setError(
-            requestError.response?.data?.message ||
-              'Unable to load patients.',
-          )
-        }
-      } finally {
-        if (active) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadPatients()
-
-    return () => {
-      active = false
-    }
-  }, [])
-
-  const handleDelete = async (patient) => {
-    const confirmed = window.confirm(
-      `Delete ${patient.firstName} ${patient.lastName}?`,
-    )
-
-    if (!confirmed) {
-      return
-    }
-
+  const remove = async () => {
     try {
-      setError('')
-      await api.delete(`/patients/${patient._id}`)
-      setPatients((currentPatients) =>
-        currentPatients.filter((item) => item._id !== patient._id),
-      )
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message || 'Unable to delete patient.',
-      )
-    }
+      setDeleting(true)
+      const response = await deletePatient(confirm._id)
+      setNotice({ severity: 'success', message: response.data.message })
+      setConfirm(null); setReload((value) => value + 1)
+    } catch (error) { setNotice({ severity: 'error', message: error.response?.data?.message || 'Unable to delete patient.' }) }
+    finally { setDeleting(false) }
   }
 
   return (
-    <section>
-      <div className="page-heading-row">
-        <h1>Patients</h1>
-        {canManage && (
-          <Link to={`${portalBase}/add`} className="button primary-button">
-            Add Patient
-          </Link>
-        )}
-      </div>
-
-      {error && <div className="message error-message">{error}</div>}
-
-      <div className="content-panel">
-        {loading ? (
-          <p className="state-message">Loading patients...</p>
-        ) : patients.length === 0 ? (
-          <p className="state-message">No patients found.</p>
-        ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Date of Birth</th>
-                  <th>Gender</th>
-                  <th>Contact Number</th>
-                  <th>Email</th>
-                  <th>Address</th>
-                  {(canManage || canDelete) && <th>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {patients.map((patient) => (
-                  <tr key={patient._id}>
-                    <td>
-                      {patient.firstName} {patient.lastName}
-                    </td>
-                    <td>{formatDate(patient.dateOfBirth)}</td>
-                    <td>{patient.gender || '—'}</td>
-                    <td>
-                      {patient.contactNumber || patient.mobileNumber || '—'}
-                    </td>
-                    <td>{patient.email}</td>
-                    <td>{formatAddress(patient.address)}</td>
-                    {(canManage || canDelete) && (
-                      <td>
-                        <div className="table-actions">
-                          {canManage && (
-                            <Link
-                              to={`${portalBase}/edit/${patient._id}`}
-                              className="button edit-button"
-                            >
-                              Edit
-                            </Link>
-                          )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              className="button delete-button"
-                              onClick={() => handleDelete(patient)}
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </section>
+    <Box component="section">
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2} sx={{ mb: 3 }}>
+        <Box><Typography variant="h4">Patients</Typography><Typography color="text.secondary">Search and manage clinic patient records.</Typography></Box>
+        {canManage && <Button component={RouterLink} to={`${portalBase}/add`} variant="contained" startIcon={<AddIcon />}>Add Patient</Button>}
+      </Stack>
+      <Paper sx={{ p: 2.5, border: 1, borderColor: 'divider' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
+          <TextField size="small" fullWidth label="Search patient number, name, email, or mobile" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
+          <FormControl size="small" sx={{ minWidth: 190 }}><InputLabel>Portal status</InputLabel><Select label="Portal status" value={portalStatus} onChange={(e) => { setPortalStatus(e.target.value); setPage(1) }}><MenuItem value="">All statuses</MenuItem><MenuItem value="not_activated">Not activated</MenuItem><MenuItem value="invited">Invited</MenuItem><MenuItem value="active">Active</MenuItem><MenuItem value="inactive">Inactive (legacy)</MenuItem></Select></FormControl>
+        </Stack>
+        <TableContainer><Table><TableHead><TableRow><TableCell>Patient</TableCell><TableCell>Sex</TableCell><TableCell>Mobile</TableCell><TableCell>Email</TableCell><TableCell>Portal</TableCell>{canManage && <TableCell align="right">Actions</TableCell>}</TableRow></TableHead><TableBody><TableState loading={loading} empty={!rows.length} colSpan={canManage ? 6 : 5} />{!loading && rows.map((patient) => <TableRow key={patient._id} hover><TableCell><Typography fontWeight={700}>{patient.firstName} {patient.middleName} {patient.lastName} {patient.suffix}</Typography><Typography variant="body2" color="text.secondary">{patient.patientNumber || 'Number pending'}</Typography></TableCell><TableCell>{patient.sex || patient.gender || '—'}</TableCell><TableCell>{patient.mobileNumber || patient.contactNumber || '—'}</TableCell><TableCell>{patient.email}</TableCell><TableCell><StatusChip status={patient.portalStatus} /></TableCell>{canManage && <TableCell align="right"><Tooltip title="Edit"><IconButton component={RouterLink} to={`${portalBase}/edit/${patient._id}`}><EditOutlinedIcon /></IconButton></Tooltip>{canDelete && <Tooltip title="Delete"><IconButton color="error" onClick={() => setConfirm(patient)}><DeleteOutlineIcon /></IconButton></Tooltip>}</TableCell>}</TableRow>)}</TableBody></Table></TableContainer>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pt: 2 }}><Typography variant="body2" color="text.secondary">{pagination.total} patient(s)</Typography><Pagination page={page} count={pagination.totalPages} onChange={(_, value) => setPage(value)} color="primary" /></Stack>
+      </Paper>
+      <ConfirmDialog open={Boolean(confirm)} title="Delete patient?" message={confirm ? `Delete ${confirm.firstName} ${confirm.lastName}? Portal-linked and protected records cannot be deleted.` : ''} loading={deleting} onCancel={() => setConfirm(null)} onConfirm={remove} />
+      <Snackbar open={Boolean(notice)} autoHideDuration={5000} onClose={() => setNotice(null)}><Alert severity={notice?.severity || 'info'} onClose={() => setNotice(null)}>{notice?.message}</Alert></Snackbar>
+    </Box>
   )
 }
 

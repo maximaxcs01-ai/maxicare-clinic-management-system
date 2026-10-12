@@ -15,9 +15,11 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const initialForm = {
   firstName: '',
+  middleName: '',
   lastName: '',
+  suffix: '',
   dateOfBirth: '',
-  gender: '',
+  sex: '',
   contactNumber: '',
   email: '',
   address: {
@@ -25,7 +27,20 @@ const initialForm = {
     barangay: '',
     city: '',
     province: '',
+    zipCode: '',
   },
+  emergencyContact: {
+    firstName: '',
+    lastName: '',
+    relationship: '',
+    mobileNumber: '',
+  },
+  medicalSummary: {
+    bloodType: '',
+    allergies: '',
+    existingConditions: '',
+  },
+  portalStatus: 'not_activated',
 }
 
 function getTodayValue() {
@@ -63,6 +78,7 @@ function getAddressForForm(address) {
       barangay: address.barangay || '',
       city: address.city || '',
       province: address.province || '',
+      zipCode: address.zipCode || '',
     }
   }
 
@@ -96,6 +112,10 @@ function validateForm(formData, locationSelection) {
     lastName: validateName(formData.lastName, 'Last name'),
   }
 
+  if (formData.middleName && validateName(formData.middleName, 'Middle name')) {
+    errors.middleName = validateName(formData.middleName, 'Middle name')
+  }
+
   if (!formData.dateOfBirth) {
     errors.dateOfBirth = 'Date of birth is required.'
   } else if (!isValidDateValue(formData.dateOfBirth)) {
@@ -104,8 +124,8 @@ function validateForm(formData, locationSelection) {
     errors.dateOfBirth = 'Date of birth cannot be in the future.'
   }
 
-  if (!['Male', 'Female'].includes(formData.gender)) {
-    errors.gender = 'Please select a gender.'
+  if (!['Male', 'Female'].includes(formData.sex)) {
+    errors.sex = 'Please select a sex.'
   }
 
   if (!contactNumberPattern.test(formData.contactNumber)) {
@@ -115,6 +135,14 @@ function validateForm(formData, locationSelection) {
 
   if (!emailPattern.test(formData.email.trim())) {
     errors.email = 'Please enter a valid email address.'
+  }
+
+  if (
+    formData.emergencyContact.mobileNumber &&
+    !contactNumberPattern.test(formData.emergencyContact.mobileNumber)
+  ) {
+    errors.emergencyMobileNumber =
+      'Emergency mobile number must be 11 digits and start with 09.'
   }
 
   if (!formData.address.street.trim()) {
@@ -192,13 +220,28 @@ function PatientForm() {
         if (active) {
           setFormData({
             firstName: patient.firstName || '',
+            middleName: patient.middleName || '',
             lastName: patient.lastName || '',
+            suffix: patient.suffix || '',
             dateOfBirth: patient.dateOfBirth?.slice(0, 10) || '',
-            gender: patient.gender || '',
+            sex: patient.sex || patient.gender || '',
             contactNumber:
               patient.contactNumber || patient.mobileNumber || '',
             email: patient.email || '',
             address,
+            emergencyContact: {
+              firstName: patient.emergencyContact?.firstName || '',
+              lastName: patient.emergencyContact?.lastName || '',
+              relationship: patient.emergencyContact?.relationship || '',
+              mobileNumber: patient.emergencyContact?.mobileNumber || '',
+            },
+            medicalSummary: {
+              bloodType: patient.medicalSummary?.bloodType || '',
+              allergies: patient.medicalSummary?.allergies || '',
+              existingConditions:
+                patient.medicalSummary?.existingConditions || '',
+            },
+            portalStatus: patient.portalStatus || 'not_activated',
           })
           setIsProvinceSelected(provinceIsValid)
           setIsCitySelected(cityIsValid)
@@ -262,6 +305,14 @@ function PatientForm() {
         ...currentData.address,
         [field]: value,
       },
+    }))
+    clearFieldError(field)
+  }
+
+  const handleNestedChange = (section, field, value) => {
+    setFormData((currentData) => ({
+      ...currentData,
+      [section]: { ...currentData[section], [field]: value },
     }))
     clearFieldError(field)
   }
@@ -334,13 +385,16 @@ function PatientForm() {
     const patientData = {
       ...formData,
       firstName: formData.firstName.trim(),
+      middleName: formData.middleName.trim(),
       lastName: formData.lastName.trim(),
+      suffix: formData.suffix.trim(),
       email: formData.email.trim().toLowerCase(),
       address: {
         street: formData.address.street.trim(),
         barangay: formData.address.barangay.trim(),
         city: formData.address.city.trim(),
         province: formData.address.province.trim(),
+        zipCode: formData.address.zipCode.trim(),
       },
     }
 
@@ -401,6 +455,21 @@ function PatientForm() {
           </div>
 
           <div className="form-field">
+            <label htmlFor="middleName">Middle Name</label>
+            <input
+              id="middleName"
+              name="middleName"
+              type="text"
+              value={formData.middleName}
+              onChange={handleChange}
+              className={fieldErrors.middleName ? 'input-error' : ''}
+              maxLength="50"
+              autoComplete="additional-name"
+            />
+            <FieldError message={fieldErrors.middleName} />
+          </div>
+
+          <div className="form-field">
             <label htmlFor="lastName">Last Name</label>
             <input
               id="lastName"
@@ -416,6 +485,19 @@ function PatientForm() {
             <FieldError message={fieldErrors.lastName} />
           </div>
 
+          <div className="form-field">
+            <label htmlFor="suffix">Suffix</label>
+            <input
+              id="suffix"
+              name="suffix"
+              type="text"
+              value={formData.suffix}
+              onChange={handleChange}
+              maxLength="20"
+              placeholder="Jr., Sr., III"
+            />
+          </div>
+
           <DatePicker
             id="dateOfBirth"
             value={formData.dateOfBirth}
@@ -424,20 +506,20 @@ function PatientForm() {
           />
 
           <div className="form-field">
-            <label htmlFor="gender">Gender</label>
+            <label htmlFor="sex">Sex</label>
             <select
-              id="gender"
-              name="gender"
-              value={formData.gender}
+              id="sex"
+              name="sex"
+              value={formData.sex}
               onChange={handleChange}
-              className={fieldErrors.gender ? 'input-error' : ''}
+              className={fieldErrors.sex ? 'input-error' : ''}
               required
             >
-              <option value="">Select gender</option>
+              <option value="">Select sex</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
-            <FieldError message={fieldErrors.gender} />
+            <FieldError message={fieldErrors.sex} />
           </div>
 
           <div className="form-field">
@@ -534,6 +616,134 @@ function PatientForm() {
               error={fieldErrors.city}
               disabled={!selectedProvinceIsValid}
             />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="zipCode">ZIP Code</label>
+            <input
+              id="zipCode"
+              type="text"
+              value={formData.address.zipCode}
+              onChange={(event) =>
+                handleAddressChange('zipCode', event.target.value)
+              }
+              maxLength="10"
+              inputMode="numeric"
+            />
+          </div>
+
+          <h2 className="form-section-heading full-width-field">
+            Emergency Contact
+          </h2>
+
+          {['firstName', 'lastName', 'relationship'].map((field) => (
+            <div className="form-field" key={`emergency-${field}`}>
+              <label htmlFor={`emergency-${field}`}>
+                {field === 'firstName'
+                  ? 'First Name'
+                  : field === 'lastName'
+                    ? 'Last Name'
+                    : 'Relationship'}
+              </label>
+              <input
+                id={`emergency-${field}`}
+                type="text"
+                value={formData.emergencyContact[field]}
+                onChange={(event) =>
+                  handleNestedChange(
+                    'emergencyContact',
+                    field,
+                    event.target.value,
+                  )
+                }
+              />
+            </div>
+          ))}
+
+          <div className="form-field">
+            <label htmlFor="emergency-mobile">Mobile Number</label>
+            <input
+              id="emergency-mobile"
+              type="text"
+              inputMode="numeric"
+              value={formData.emergencyContact.mobileNumber}
+              onChange={(event) =>
+                handleNestedChange(
+                  'emergencyContact',
+                  'mobileNumber',
+                  event.target.value.replace(/\D/g, '').slice(0, 11),
+                )
+              }
+              className={fieldErrors.emergencyMobileNumber ? 'input-error' : ''}
+            />
+            <FieldError message={fieldErrors.emergencyMobileNumber} />
+          </div>
+
+          <h2 className="form-section-heading full-width-field">
+            Medical Summary
+          </h2>
+
+          <div className="form-field">
+            <label htmlFor="bloodType">Blood Type</label>
+            <input
+              id="bloodType"
+              type="text"
+              value={formData.medicalSummary.bloodType}
+              onChange={(event) =>
+                handleNestedChange(
+                  'medicalSummary',
+                  'bloodType',
+                  event.target.value,
+                )
+              }
+            />
+          </div>
+
+          <div className="form-field full-width-field">
+            <label htmlFor="allergies">Allergies</label>
+            <textarea
+              id="allergies"
+              rows="2"
+              value={formData.medicalSummary.allergies}
+              onChange={(event) =>
+                handleNestedChange(
+                  'medicalSummary',
+                  'allergies',
+                  event.target.value,
+                )
+              }
+            />
+          </div>
+
+          <div className="form-field full-width-field">
+            <label htmlFor="existingConditions">Existing Conditions</label>
+            <textarea
+              id="existingConditions"
+              rows="2"
+              value={formData.medicalSummary.existingConditions}
+              onChange={(event) =>
+                handleNestedChange(
+                  'medicalSummary',
+                  'existingConditions',
+                  event.target.value,
+                )
+              }
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="portalStatus">Portal Status</label>
+            <select
+              id="portalStatus"
+              name="portalStatus"
+              value={formData.portalStatus}
+              onChange={handleChange}
+            >
+              <option value="not_activated">Not activated</option>
+              <option value="invited">Invited</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive (legacy)</option>
+            </select>
           </div>
 
           <div className="form-actions full-width-field">
