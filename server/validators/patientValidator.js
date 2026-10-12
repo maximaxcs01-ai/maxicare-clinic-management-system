@@ -36,6 +36,7 @@ const getPatientData = (body = {}) => ({
   dateOfBirth: body.dateOfBirth,
   gender: cleanString(body.gender),
   contactNumber: cleanString(body.contactNumber),
+  mobileNumber: cleanString(body.contactNumber),
   email: cleanString(body.email).toLowerCase(),
   address: {
     street: cleanString(body.address?.street),

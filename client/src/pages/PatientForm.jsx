@@ -192,7 +192,8 @@ function PatientForm() {
             lastName: patient.lastName || '',
             dateOfBirth: patient.dateOfBirth?.slice(0, 10) || '',
             gender: patient.gender || '',
-            contactNumber: patient.contactNumber || '',
+            contactNumber:
+              patient.contactNumber || patient.mobileNumber || '',
             email: patient.email || '',
             address,
           })

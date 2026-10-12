@@ -2,6 +2,20 @@ const mongoose = require("mongoose");
 
 const patientSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      unique: true,
+      sparse: true,
+    },
+
+    patientNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+
     firstName: {
       type: String,
       required: true,
@@ -9,6 +23,13 @@ const patientSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 50,
       match: /^[\p{L}\s'-]+$/u,
+    },
+
+    middleName: {
+      type: String,
+      trim: true,
+      maxlength: 50,
+      default: "",
     },
 
     lastName: {
@@ -22,7 +43,6 @@ const patientSchema = new mongoose.Schema(
 
     dateOfBirth: {
       type: Date,
-      required: true,
       validate: {
         validator: (value) => value <= new Date(),
         message: "Date of birth cannot be in the future",
@@ -31,13 +51,17 @@ const patientSchema = new mongoose.Schema(
 
     gender: {
       type: String,
-      required: true,
       enum: ["Male", "Female"],
     },
 
     contactNumber: {
       type: String,
-      required: true,
+      trim: true,
+      match: /^09\d{9}$/,
+    },
+
+    mobileNumber: {
+      type: String,
       trim: true,
       match: /^09\d{9}$/,
     },
@@ -53,27 +77,29 @@ const patientSchema = new mongoose.Schema(
     address: {
       street: {
         type: String,
-        required: true,
         trim: true,
       },
 
       barangay: {
         type: String,
-        required: true,
         trim: true,
       },
 
       city: {
         type: String,
-        required: true,
         trim: true,
       },
 
       province: {
         type: String,
-        required: true,
         trim: true,
       },
+    },
+
+    portalStatus: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
     },
   },
   {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import api from '../services/api'
 
 function formatDate(date) {
+  if (!date) return '—'
   return new Date(date).toLocaleDateString()
 }
 
@@ -21,9 +22,16 @@ function formatAddress(address) {
       : `Brgy. ${address.barangay}`
     : ''
 
-  return [address.street, barangay, address.city, address.province]
+  const formattedAddress = [
+    address.street,
+    barangay,
+    address.city,
+    address.province,
+  ]
     .filter(Boolean)
     .join(', ')
+
+  return formattedAddress || '—'
 }
 
 function Patients() {
@@ -121,8 +129,10 @@ function Patients() {
                       {patient.firstName} {patient.lastName}
                     </td>
                     <td>{formatDate(patient.dateOfBirth)}</td>
-                    <td>{patient.gender}</td>
-                    <td>{patient.contactNumber}</td>
+                    <td>{patient.gender || '—'}</td>
+                    <td>
+                      {patient.contactNumber || patient.mobileNumber || '—'}
+                    </td>
                     <td>{patient.email}</td>
                     <td>{formatAddress(patient.address)}</td>
                     <td>

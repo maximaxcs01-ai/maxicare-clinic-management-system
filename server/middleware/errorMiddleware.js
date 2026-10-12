@@ -22,7 +22,7 @@ const errorHandler = (error, req, res, next) => {
     message = "A record with that value already exists";
   }
 
-  if (statusCode >= 500) message = "Server error";
+  if (statusCode >= 500 && !error.isOperational) message = "Server error";
 
   res.status(statusCode).json({ message });
 };

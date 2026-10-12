@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
+import useAuth from '../hooks/useAuth'
 import Sidebar from './Sidebar'
 
 function AuthenticatedLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const navigate = useNavigate()
+  const { logout } = useAuth()
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    logout()
     setMobileSidebarOpen(false)
     navigate('/login')
   }

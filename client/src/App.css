@@ -13,6 +13,11 @@
   border-radius: 6px;
 }
 
+.register-card,
+.verify-card {
+  width: min(100%, 500px);
+}
+
 .auth-card h1 {
   margin: 0;
   color: #173b5e;
@@ -39,6 +44,11 @@ label {
 
 .auth-card label {
   margin-top: 6px;
+}
+
+.auth-field {
+  display: grid;
+  gap: 7px;
 }
 
 input,
@@ -84,6 +94,32 @@ input:disabled {
   background: #1c4869;
 }
 
+.otp-inputs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(40px, 1fr));
+  gap: 10px;
+  margin: 8px 0 4px;
+}
+
+.otp-inputs input {
+  min-width: 0;
+  padding: 12px 4px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.auth-card .resend-button {
+  margin-top: 2px;
+  color: #245a82;
+  background: #ffffff;
+  border-color: #aeb9c3;
+}
+
+.auth-card .resend-button:hover:not(:disabled) {
+  background: #eef4f8;
+}
+
 button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
@@ -114,6 +150,12 @@ button:disabled {
   color: #637180;
   font-size: 0.9rem;
   text-align: center;
+}
+
+.forgot-password-link {
+  justify-self: end;
+  margin-top: 2px;
+  font-size: 0.88rem;
 }
 
 a {
@@ -755,6 +797,10 @@ textarea {
 
   .auth-card {
     padding: 24px 20px;
+  }
+
+  .otp-inputs {
+    gap: 6px;
   }
 
   .page-heading-row {

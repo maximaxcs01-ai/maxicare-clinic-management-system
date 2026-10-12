@@ -8,6 +8,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    middleName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     lastName: {
       type: String,
       required: true,
@@ -26,6 +32,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 6,
+      select: false,
     },
 
     role: {
@@ -38,6 +45,17 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["active", "inactive"],
       default: "active",
+    },
+
+    emailVerified: {
+      type: Boolean,
+      default: true,
+    },
+
+    tokenVersion: {
+      type: Number,
+      default: 0,
+      select: false,
     },
   },
   {

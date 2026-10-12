@@ -29,9 +29,17 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const user = await User.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.id).select(
+      "-password +tokenVersion"
+    );
 
     if (!user) {
+      return res.status(401).json({
+        message: "Not authorized, token failed",
+      });
+    }
+
+    if ((decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
       return res.status(401).json({
         message: "Not authorized, token failed",
       });
@@ -40,6 +48,12 @@ const protect = async (req, res, next) => {
     if (user.status !== "active") {
       return res.status(403).json({
         message: "Your account is inactive",
+      });
+    }
+
+    if (user.emailVerified === false) {
+      return res.status(403).json({
+        message: "Email verification required",
       });
     }
 

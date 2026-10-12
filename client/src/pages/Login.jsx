@@ -1,13 +1,18 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import api from '../services/api'
+import useAuth from '../hooks/useAuth'
+import { takeAuthMessage } from '../utils/authStorage'
+import { getRoleDestination } from '../utils/authRoutes'
 
 function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(takeAuthMessage)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const { login } = useAuth()
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -25,13 +30,9 @@ function Login() {
         password,
       })
 
-      localStorage.setItem('token', response.data.token)
+      login(response.data.token, response.data.user)
 
-      if (response.data.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user))
-      }
-
-      navigate('/dashboard')
+      navigate(getRoleDestination(response.data.user?.role))
     } catch (requestError) {
       setError(
         requestError.response?.data?.message ||
@@ -49,6 +50,11 @@ function Login() {
         <p className="subtitle">Sign in to continue</p>
 
         {error && <div className="message error-message">{error}</div>}
+        {location.state?.message && (
+          <div className="message success-message">
+            {location.state.message}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <label htmlFor="email">Email</label>
@@ -74,6 +80,10 @@ function Login() {
           <button type="submit" disabled={loading}>
             {loading ? 'Signing in...' : 'Login'}
           </button>
+
+          <Link className="forgot-password-link" to="/forgot-password">
+            Forgot password?
+          </Link>
         </form>
 
         <p className="auth-link">

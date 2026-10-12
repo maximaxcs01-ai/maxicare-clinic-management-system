@@ -1,8 +1,12 @@
 const Patient = require("../models/Patient");
+const { getNextPatientNumber } = require("./patientNumberService");
 
 const findPatients = () => Patient.find().sort({ createdAt: -1 });
 const findPatientById = (id) => Patient.findById(id);
-const createPatient = (patientData) => Patient.create(patientData);
+const createPatient = async (patientData) => {
+  const patientNumber = await getNextPatientNumber();
+  return Patient.create({ ...patientData, patientNumber });
+};
 const updatePatient = (id, patientData) =>
   Patient.findByIdAndUpdate(id, patientData, {
     new: true,
