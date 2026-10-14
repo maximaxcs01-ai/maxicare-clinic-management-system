@@ -76,15 +76,20 @@ function ServicesManagement() {
   }
 
   return (
-    <Box component="section">
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'stretch', sm: 'center' }}
-        gap={2}
-        sx={{ mb: 3 }}
+    <Box component="section" sx={{ minWidth: 0 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: 'minmax(0, 1fr)',
+            sm: 'minmax(0, 1fr) auto',
+          },
+          alignItems: 'center',
+          gap: 2,
+          mb: 3,
+        }}
       >
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography variant="h4">Services</Typography>
           <Typography color="text.secondary">Manage clinic services, fees, and durations.</Typography>
         </Box>
@@ -93,7 +98,8 @@ function ServicesManagement() {
           startIcon={<AddIcon />}
           onClick={() => openForm()}
           sx={{
-            minWidth: { xs: '100%', sm: 170 },
+            justifySelf: { xs: 'stretch', sm: 'end' },
+            minWidth: { sm: 170 },
             height: 44,
             borderRadius: 2,
             px: 2.25,
@@ -102,7 +108,7 @@ function ServicesManagement() {
         >
           Add Service
         </Button>
-      </Stack>
+      </Box>
       <Paper sx={{ p: 2.5, border: 1, borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
           <TextField size="small" label="Search services" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} fullWidth />
