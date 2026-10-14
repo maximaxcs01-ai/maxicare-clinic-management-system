@@ -13,11 +13,14 @@ import Profile from './pages/Profile'
 import Register from './pages/Register'
 import ResetPassword from './pages/ResetPassword'
 import RoleDashboard from './pages/RoleDashboard'
+import SetupAccount from './pages/SetupAccount'
 import VerifyEmail from './pages/VerifyEmail'
 import VerifyResetOtp from './pages/VerifyResetOtp'
 import DoctorsManagement from './pages/admin/DoctorsManagement'
 import ServicesManagement from './pages/admin/ServicesManagement'
 import UsersManagement from './pages/admin/UsersManagement'
+import DoctorSchedulePage from './pages/DoctorSchedulePage'
+import ReceptionistDoctorsPage from './pages/receptionist/Doctors'
 import { getRoleDestination } from './utils/authRoutes'
 import './App.css'
 
@@ -70,6 +73,7 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/setup-account" element={<SetupAccount />} />
 
       <Route
         element={
@@ -123,7 +127,11 @@ function AppRoutes() {
           <Route path="/receptionist/queue" element={placeholder('Queue')} />
           <Route
             path="/receptionist/doctors"
-            element={placeholder('Doctors')}
+            element={<ReceptionistDoctorsPage />}
+          />
+          <Route
+            path="/receptionist/doctors/:id/schedule"
+            element={<DoctorSchedulePage readOnly />}
           />
           <Route path="/receptionist/profile" element={<Profile />} />
           <Route
@@ -134,10 +142,7 @@ function AppRoutes() {
 
         <Route element={<RoleRoute allowedRoles={['doctor']} />}>
           <Route path="/doctor" element={<RoleDashboard />} />
-          <Route
-            path="/doctor/schedule"
-            element={placeholder('My Schedule')}
-          />
+          <Route path="/doctor/schedule" element={<DoctorSchedulePage />} />
           <Route path="/doctor/patients" element={<Patients />} />
           <Route
             path="/doctor/consultations"
@@ -160,6 +165,10 @@ function AppRoutes() {
           <Route path="/admin/patients/add" element={<PatientForm />} />
           <Route path="/admin/patients/edit/:id" element={<PatientForm />} />
           <Route path="/admin/doctors" element={<DoctorsManagement />} />
+          <Route
+            path="/admin/doctors/:id/schedule"
+            element={<DoctorSchedulePage />}
+          />
           <Route
             path="/admin/appointments"
             element={placeholder('Appointments')}

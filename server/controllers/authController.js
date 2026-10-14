@@ -12,6 +12,7 @@ const {
   verifyPasswordResetOtp,
   resetPassword,
 } = require("../services/passwordResetService");
+const { validateSetupToken, completeSetup } = require("../services/accountSetupService");
 
 const PASSWORD_RESET_SAFE_MESSAGE =
   "If an account exists for that email, a verification code has been sent.";
@@ -80,6 +81,12 @@ const loginUser = async (req, res, next) => {
     if (!isPasswordCorrect) {
       return res.status(401).json({
         message: "Invalid email or password",
+      });
+    }
+
+    if (user.passwordSetupRequired === true) {
+      return res.status(403).json({
+        message: "Account setup is required. Please use the invitation sent to your email.",
       });
     }
 
@@ -165,6 +172,30 @@ const updatePassword = async (req, res, next) => {
   }
 };
 
+const validateAccountSetupToken = async (req, res, next) => {
+  try {
+    const token = typeof req.query?.token === "string" ? req.query.token.trim() : "";
+    const result = await validateSetupToken(token);
+    if (result.valid) {
+      return res.status(200).json(result);
+    }
+    return res.status(400).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const setAccountPassword = async (req, res, next) => {
+  try {
+    await completeSetup(req.validatedAuth);
+    res.status(200).json({
+      message: "Password set successfully. You can now log in.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getCurrentUser = (req, res) => {
   res.status(200).json({
     user: {
@@ -190,4 +221,6 @@ module.exports = {
   resendResetOtp,
   verifyResetOtp,
   updatePassword,
+  validateAccountSetupToken,
+  setAccountPassword,
 };

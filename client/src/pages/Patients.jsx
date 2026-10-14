@@ -56,9 +56,34 @@ function Patients() {
 
   return (
     <Box component="section">
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2} sx={{ mb: 3 }}>
-        <Box><Typography variant="h4">Patients</Typography><Typography color="text.secondary">Search and manage clinic patient records.</Typography></Box>
-        {canManage && <Button component={RouterLink} to={`${portalBase}/add`} variant="contained" startIcon={<AddIcon />}>Add Patient</Button>}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        gap={2}
+        sx={{ mb: 3 }}
+      >
+        <Box>
+          <Typography variant="h4">Patients</Typography>
+          <Typography color="text.secondary">Search and manage clinic patient records.</Typography>
+        </Box>
+        {canManage && (
+          <Button
+            component={RouterLink}
+            to={`${portalBase}/add`}
+            variant="contained"
+            startIcon={<AddIcon />}
+            sx={{
+              minWidth: { xs: '100%', sm: 170 },
+              height: 44,
+              borderRadius: 2,
+              px: 2.25,
+              fontWeight: 600,
+            }}
+          >
+            Add Patient
+          </Button>
+        )}
       </Stack>
       <Paper sx={{ p: 2.5, border: 1, borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>

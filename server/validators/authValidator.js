@@ -123,9 +123,52 @@ const validateResetPassword = (req, res, next) => {
   next();
 };
 
+const validateAccountSetupToken = (req, res, next) => {
+  const token = cleanString(req.query?.token || req.body?.token || "");
+
+  if (!token) {
+    return res.status(400).json({
+      valid: false,
+      message: "This account setup link is invalid or has expired.",
+    });
+  }
+
+  req.validatedAuth = { token };
+  next();
+};
+
+const validateAccountSetupPassword = (req, res, next) => {
+  const token = cleanString(req.body?.token || "");
+  const newPassword =
+    typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  const confirmPassword =
+    typeof req.body?.confirmPassword === "string" ? req.body.confirmPassword : "";
+
+  if (!token) {
+    return res.status(400).json({
+      message: "This account setup link is invalid or has expired.",
+    });
+  }
+
+  if (newPassword.length < 8 || newPassword.length > 16) {
+    return res.status(400).json({
+      message: "Password must be 8 to 16 characters",
+    });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+
+  req.validatedAuth = { token, newPassword, confirmPassword };
+  next();
+};
+
 module.exports = {
   validateRegistration,
   validateEmailOtp,
   validateResendOtp,
   validateResetPassword,
+  validateAccountSetupToken,
+  validateAccountSetupPassword,
 };

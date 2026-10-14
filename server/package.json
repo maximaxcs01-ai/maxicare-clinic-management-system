@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
+  "scripts": {"admin:create": "node scripts/createInitialAdmin.js",
     "start": "node server.js"
   },
   "keywords": [],

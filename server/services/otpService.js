@@ -64,6 +64,12 @@ const hashResetToken = (email, token) =>
 const verifyResetTokenHash = (email, token, storedHash) =>
   verifyHash(hashResetToken(email, token), storedHash);
 
+const hashAccountSetupToken = (email, token) =>
+  hashValue("account-setup-token", email, token);
+
+const verifyAccountSetupTokenHash = (email, token, storedHash) =>
+  verifyHash(hashAccountSetupToken(email, token), storedHash);
+
 module.exports = {
   OTP_VALIDITY_MS,
   PENDING_VALIDITY_MS,
@@ -78,5 +84,7 @@ module.exports = {
   verifyResetOtpHash,
   hashResetToken,
   verifyResetTokenHash,
+  hashAccountSetupToken,
+  verifyAccountSetupTokenHash,
   requireOtpSecret,
 };

@@ -9,6 +9,8 @@ const {
   resendResetOtp,
   verifyResetOtp,
   updatePassword,
+  validateAccountSetupToken,
+  setAccountPassword,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/authMiddleware");
 const {
@@ -16,6 +18,8 @@ const {
   validateEmailOtp,
   validateResendOtp,
   validateResetPassword,
+  validateAccountSetupToken: validateSetupQuery,
+  validateAccountSetupPassword,
 } = require("../validators/authValidator");
 
 const router = express.Router();
@@ -28,6 +32,8 @@ router.post("/forgot-password", validateResendOtp, forgotPassword);
 router.post("/verify-reset-otp", validateEmailOtp, verifyResetOtp);
 router.post("/resend-reset-otp", validateResendOtp, resendResetOtp);
 router.post("/reset-password", validateResetPassword, updatePassword);
+router.get("/account-setup/validate", validateSetupQuery, validateAccountSetupToken);
+router.post("/account-setup", validateAccountSetupPassword, setAccountPassword);
 router.get("/me", protect, getCurrentUser);
 
 module.exports = router;

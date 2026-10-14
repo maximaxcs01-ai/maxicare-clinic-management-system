@@ -52,6 +52,11 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
 
+    passwordSetupRequired: {
+      type: Boolean,
+      default: false,
+    },
+
     tokenVersion: {
       type: Number,
       default: 0,

@@ -6,5 +6,6 @@ const getMyDoctor = async (req, res, next) => { try { const data = await service
 const createDoctor = async (req, res, next) => { try { const data = await service.createDoctor(req.validatedDoctor); res.status(201).json({ message: "Doctor created successfully", data }); } catch (e) { next(e); } };
 const updateDoctor = async (req, res, next) => { try { const data = await service.updateDoctor(req.params.id, req.validatedDoctor); if (!data) return res.status(404).json({ message: "Doctor not found" }); res.json({ message: "Doctor updated successfully", data }); } catch (e) { next(e); } };
 const deleteDoctor = async (req, res, next) => { try { const deleted = await service.deleteDoctor(req.params.id); if (!deleted) return res.status(404).json({ message: "Doctor not found" }); res.json({ message: "Doctor deleted successfully" }); } catch (e) { next(e); } };
+const resendInvitation = async (req, res, next) => { try { const result = await service.resendInvitation(req.params.id); res.status(200).json(result); } catch (e) { next(e); } };
 
-module.exports = { listDoctors, getDoctor, getMyDoctor, createDoctor, updateDoctor, deleteDoctor };
+module.exports = { listDoctors, getDoctor, getMyDoctor, createDoctor, updateDoctor, deleteDoctor, resendInvitation };

@@ -1,3 +1,4 @@
+const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 const Doctor = require("../models/Doctor");
@@ -7,6 +8,7 @@ const User = require("../models/User");
 const AppError = require("../utils/AppError");
 const { getNextDoctorNumber } = require("./doctorNumberService");
 const { buildPagination, escapeRegex, getPagination } = require("../utils/pagination");
+const { sendDoctorInvitation } = require("./accountSetupService");
 
 const ensureServicesExist = async (serviceIds, session) => {
   const count = await Service.countDocuments({ _id: { $in: serviceIds } }).session(session || null);
@@ -33,7 +35,12 @@ const listDoctors = async (query, role) => {
   if (mongoose.isValidObjectId(query.serviceId)) filter.serviceIds = query.serviceId;
 
   const [data, total] = await Promise.all([
-    Doctor.find(filter).populate("serviceIds", "name status").sort({ lastName: 1, firstName: 1 }).skip(skip).limit(limit),
+    Doctor.find(filter)
+      .populate("serviceIds", "name status")
+      .populate("userId", "passwordSetupRequired status")
+      .sort({ lastName: 1, firstName: 1 })
+      .skip(skip)
+      .limit(limit),
     Doctor.countDocuments(filter),
   ]);
   return { data, pagination: buildPagination(page, limit, total) };
@@ -42,30 +49,59 @@ const listDoctors = async (query, role) => {
 const getDoctor = async (id, role) => {
   const filter = { _id: id };
   if (role === "patient") filter.status = "active";
-  return Doctor.findOne(filter).populate("serviceIds", "name status");
+  return Doctor.findOne(filter)
+    .populate("serviceIds", "name status")
+    .populate("userId", "passwordSetupRequired status");
 };
 
 const getMyDoctor = (userId) =>
-  Doctor.findOne({ userId }).populate("serviceIds", "name status");
+  Doctor.findOne({ userId })
+    .populate("serviceIds", "name status")
+    .populate("userId", "passwordSetupRequired status");
 
 const createDoctor = async (data) => {
-  const password = await bcrypt.hash(data.temporaryPassword, 10);
+  const internalPassword = crypto.randomBytes(24).toString("base64url");
+  const password = await bcrypt.hash(internalPassword, 10);
   const session = await mongoose.startSession();
   let createdDoctor;
+  let invitationEmailFailed = false;
   try {
     await session.withTransaction(async () => {
       await ensureServicesExist(data.serviceIds, session);
       const [user] = await User.create([{
-        firstName: data.firstName, middleName: data.middleName, lastName: data.lastName,
-        email: data.email, password, role: "doctor", status: data.status, emailVerified: true,
+        firstName: data.firstName,
+        middleName: data.middleName,
+        lastName: data.lastName,
+        email: data.email,
+        password,
+        role: "doctor",
+        status: data.status,
+        emailVerified: true,
+        passwordSetupRequired: true,
       }], { session });
       const doctorNumber = await getNextDoctorNumber(session);
       [createdDoctor] = await Doctor.create([{
-        ...data, temporaryPassword: undefined, userId: user._id, doctorNumber,
+        ...data,
+        userId: user._id,
+        doctorNumber,
       }], { session });
+
+      try {
+        await sendDoctorInvitation(user);
+      } catch (error) {
+        invitationEmailFailed = true;
+      }
     });
   } finally { await session.endSession(); }
-  return Doctor.findById(createdDoctor._id).populate("serviceIds", "name status");
+
+  const doctor = await Doctor.findById(createdDoctor._id)
+    .populate("serviceIds", "name status")
+    .populate("userId", "passwordSetupRequired status");
+
+  return {
+    doctor,
+    invitationEmailFailed,
+  };
 };
 
 const updateDoctor = async (id, data) => {
@@ -89,7 +125,9 @@ const updateDoctor = async (id, data) => {
       }, { session, runValidators: true });
     });
   } finally { await session.endSession(); }
-  return doctorId ? Doctor.findById(doctorId).populate("serviceIds", "name status") : null;
+  return doctorId ? Doctor.findById(doctorId)
+    .populate("serviceIds", "name status")
+    .populate("userId", "passwordSetupRequired status") : null;
 };
 
 const deleteDoctor = async (id) => {
@@ -108,4 +146,18 @@ const deleteDoctor = async (id) => {
   return deleted;
 };
 
-module.exports = { listDoctors, getDoctor, getMyDoctor, createDoctor, updateDoctor, deleteDoctor };
+const resendInvitation = async (id) => {
+  const doctor = await Doctor.findById(id).populate("userId", "passwordSetupRequired email firstName lastName");
+  if (!doctor) throw new AppError("Doctor not found", 404);
+
+  const user = doctor.userId;
+  if (!user) throw new AppError("Doctor user not found", 404);
+  if (user.passwordSetupRequired !== true) {
+    throw new AppError("Doctor account setup is already complete", 409);
+  }
+
+  await sendDoctorInvitation(user);
+  return { message: "Account setup invitation sent successfully." };
+};
+
+module.exports = { listDoctors, getDoctor, getMyDoctor, createDoctor, updateDoctor, deleteDoctor, resendInvitation };

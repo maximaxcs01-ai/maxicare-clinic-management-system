@@ -87,8 +87,22 @@ const sendPasswordResetEmail = async ({ email, firstName, otp }) => {
   });
 };
 
+const sendDoctorInvitationEmail = async ({ email, firstName, lastName, setupUrl }) => {
+  const safeName = escapeHtml(`${firstName} ${lastName}`.trim() || firstName || "Doctor");
+  const safeSetupUrl = escapeHtml(setupUrl);
+
+  await sendEmail({
+    email,
+    name: `${firstName} ${lastName}`.trim() || firstName || "Doctor",
+    subject: "Set up your Maxicare Clinic account",
+    htmlContent: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#102a43;line-height:1.6"><h2>Maxicare Clinic</h2><p>Hello ${safeName},</p><p>An account has been created for you in the Maxicare Clinic Management System.</p><p>Please set your password to activate your account.</p><p><a href="${safeSetupUrl}" style="display:inline-block;padding:12px 20px;background:#0f766e;color:white;text-decoration:none;border-radius:6px;font-weight:700">Set Up My Account</a></p><p>This link will expire in 24 hours.</p><p>If you were not expecting this invitation, please contact the clinic administrator.</p></body></html>`,
+    errorMessage: "Unable to send doctor invitation email. Please try again.",
+  });
+};
+
 module.exports = {
   getEmailConfiguration,
   sendVerificationEmail,
   sendPasswordResetEmail,
+  sendDoctorInvitationEmail,
 };
