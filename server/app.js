@@ -17,6 +17,7 @@ const doctorRoutes = require("./routes/doctorRoutes");
 const userRoutes = require("./routes/userRoutes");
 const scheduleRoutes = require("./routes/scheduleRoutes");
 const availabilityRoutes = require("./routes/availabilityRoutes");
+const appointmentRoutes = require("./routes/appointmentRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -82,6 +83,7 @@ app.use("/api/doctors", scheduleRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/availability", availabilityRoutes);
+app.use("/api/appointments", appointmentRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

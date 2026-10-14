@@ -9,6 +9,8 @@ import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
 import PatientForm from './pages/PatientForm'
 import Patients from './pages/Patients'
+import PatientAppointments from './pages/PatientAppointments'
+import BookAppointment from './pages/BookAppointment'
 import Profile from './pages/Profile'
 import Register from './pages/Register'
 import ResetPassword from './pages/ResetPassword'
@@ -86,10 +88,11 @@ function AppRoutes() {
           <Route path="/patient" element={<RoleDashboard />} />
           <Route
             path="/patient/appointments"
-            element={placeholder(
-              'Appointments',
-              'Appointment scheduling will be available in a later development phase.',
-            )}
+            element={<PatientAppointments />}
+          />
+          <Route
+            path="/patient/appointments/book"
+            element={<BookAppointment />}
           />
           <Route
             path="/patient/medical-history"

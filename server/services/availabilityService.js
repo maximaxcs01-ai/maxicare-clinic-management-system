@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Doctor = require("../models/Doctor");
 const DoctorSchedule = require("../models/DoctorSchedule");
 const Service = require("../models/Service");
+const Appointment = require("../models/Appointment");
 const AppError = require("../utils/AppError");
 const { toMinutes, validDate } = require("../validators/scheduleValidator");
 
@@ -23,6 +24,16 @@ const dateValue = (date) => {
   const [year, month, day] = date.split("-").map(Number);
   return Date.UTC(year, month - 1, day);
 };
+
+const toManilaDateTime = (date, time) => new Date(`${date}T${time}:00+08:00`);
+
+const formatManilaTime = (date) =>
+  new Intl.DateTimeFormat("en-GB", {
+    timeZone: CLINIC_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
 
 const validateHorizon = (date) => {
   if (!validDate(date)) throw new AppError("Please provide a valid date in YYYY-MM-DD format", 400);
@@ -51,7 +62,17 @@ const generateSlots = (periods) => periods.flatMap((period) => {
 });
 
 const removePastSlots = (slots, date, now) => date === now.date ? slots.filter((time) => toMinutes(time) > now.minutes) : slots;
-const removeBookedSlots = async (slots) => slots;
+const removeBookedSlots = async (slots, { doctorId, date }) => {
+  if (slots.length === 0) return slots;
+  const slotStarts = slots.map((time) => toManilaDateTime(date, time));
+  const bookedAppointments = await Appointment.find({
+    doctorId,
+    slotReserved: true,
+    startAt: { $in: slotStarts },
+  }).select("startAt").lean();
+  const bookedTimes = new Set(bookedAppointments.map(({ startAt }) => formatManilaTime(startAt)));
+  return slots.filter((time) => !bookedTimes.has(time));
+};
 
 const getDoctorAvailability = async ({ doctorId, date, serviceId }) => {
   if (!mongoose.isValidObjectId(doctorId)) throw new AppError("Invalid doctor", 400);
@@ -83,4 +104,4 @@ const getDoctorAvailability = async ({ doctorId, date, serviceId }) => {
   };
 };
 
-module.exports = { SLOT_DURATION_MINUTES, CLINIC_TIMEZONE, getDoctorAvailability, getBaseSchedule, generateSlots, removePastSlots, removeBookedSlots };
+module.exports = { SLOT_DURATION_MINUTES, CLINIC_TIMEZONE, getDoctorAvailability, getBaseSchedule, generateSlots, removePastSlots, removeBookedSlots, toManilaDateTime };
