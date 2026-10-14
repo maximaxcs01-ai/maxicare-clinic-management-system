@@ -23,6 +23,7 @@ import ServicesManagement from './pages/admin/ServicesManagement'
 import UsersManagement from './pages/admin/UsersManagement'
 import DoctorSchedulePage from './pages/DoctorSchedulePage'
 import ReceptionistDoctorsPage from './pages/receptionist/Doctors'
+import AppointmentsManagement from './pages/AppointmentsManagement'
 import { getRoleDestination } from './utils/authRoutes'
 import './App.css'
 
@@ -125,7 +126,7 @@ function AppRoutes() {
           />
           <Route
             path="/receptionist/appointments"
-            element={placeholder('Appointments')}
+            element={<AppointmentsManagement />}
           />
           <Route path="/receptionist/queue" element={placeholder('Queue')} />
           <Route
@@ -174,7 +175,7 @@ function AppRoutes() {
           />
           <Route
             path="/admin/appointments"
-            element={placeholder('Appointments')}
+            element={<AppointmentsManagement />}
           />
           <Route path="/admin/services" element={<ServicesManagement />} />
           <Route path="/admin/users" element={<UsersManagement />} />
