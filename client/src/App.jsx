@@ -24,6 +24,7 @@ import DoctorsManagement from './pages/admin/DoctorsManagement'
 import ServicesManagement from './pages/admin/ServicesManagement'
 import UsersManagement from './pages/admin/UsersManagement'
 import Reports from './pages/admin/Reports'
+import AuditLogs from './pages/admin/AuditLogs'
 import DoctorSchedulePage from './pages/DoctorSchedulePage'
 import ReceptionistDoctorsPage from './pages/receptionist/Doctors'
 import AppointmentsManagement from './pages/AppointmentsManagement'
@@ -213,6 +214,7 @@ function AppRoutes() {
           <Route path="/admin/services" element={<ServicesManagement />} />
           <Route path="/admin/users" element={<UsersManagement />} />
           <Route path="/admin/reports" element={<Reports />} />
+          <Route path="/admin/audit-logs" element={<AuditLogs />} />
           <Route path="/admin/profile" element={<Profile />} />
           <Route
             path="/admin/account-settings"

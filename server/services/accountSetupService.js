@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const AccountSetupToken = require("../models/AccountSetupToken");
 const Patient = require("../models/Patient");
 const User = require("../models/User");
+const { recordAudit } = require("./auditService");
 const AppError = require("../utils/AppError");
 const { requireOtpSecret, hashAccountSetupToken, verifyAccountSetupTokenHash } = require("./otpService");
 const {
@@ -99,7 +100,7 @@ const validateSetupToken = async (token) => {
   };
 };
 
-const completeSetup = async ({ token, newPassword, confirmPassword }) => {
+const completeSetup = async ({ token, newPassword, confirmPassword }, request) => {
   if (!token || typeof token !== "string") {
     throw new AppError("This account setup link is invalid or has expired.", 400);
   }
@@ -160,13 +161,31 @@ const completeSetup = async ({ token, newPassword, confirmPassword }) => {
         { $set: { portalStatus: "active" } },
         { session }
       );
+      if (request) {
+        await recordAudit(
+          {
+            actorUserId: completedUser._id,
+            actorRole: completedUser.role,
+            action: "account.password_setup_completed",
+            entityType: "User",
+            entityId: completedUser._id,
+            description: "Account password setup completed.",
+            metadata: { userId: completedUser._id },
+          },
+          request,
+          session
+        );
+      }
       await AccountSetupToken.deleteOne({ _id: record._id }, { session });
     });
   } finally {
     await session.endSession();
   }
 
-  return { userId: completedUser._id, email: completedUser.email };
+  return {
+    userId: completedUser._id,
+    email: completedUser.email,
+  };
 };
 
 const resendInvitation = async (user) => {

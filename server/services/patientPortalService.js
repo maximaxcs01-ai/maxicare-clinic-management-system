@@ -5,6 +5,7 @@ const Patient = require("../models/Patient");
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
 const accountSetupService = require("./accountSetupService");
+const { recordAudit } = require("./auditService");
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -12,7 +13,7 @@ const assertPatientId = (id) => {
   if (!mongoose.isValidObjectId(id)) throw new AppError("Invalid patient", 400);
 };
 
-const activatePatientPortal = async (patientId) => {
+const activatePatientPortal = async (patientId, actor, request) => {
   assertPatientId(patientId);
   const session = await mongoose.startSession();
   let activationUser;
@@ -70,6 +71,22 @@ const activatePatientPortal = async (patientId) => {
       patient.portalStatus = needsInvitation ? "invited" : "active";
       await patient.save({ session });
       activationUser = user;
+      if (actor) {
+        await recordAudit(
+          {
+            actorUserId: actor._id,
+            actorRole: actor.role,
+            action: "patient.portal_activated",
+            entityType: "Patient",
+            entityId: patient._id,
+            patientId: patient._id,
+            description: "Patient portal access activated.",
+            metadata: { patientId: patient._id, portalStatus: patient.portalStatus },
+          },
+          request,
+          session
+        );
+      }
     });
   } catch (error) {
     if (error.code === 11000) {

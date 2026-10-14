@@ -15,7 +15,8 @@ const startConsultation = async (req, res, next) => {
   try {
     const data = await service.startConsultation(
       req.params.queueEntryId,
-      req.user
+      req.user,
+      req
     );
     res.status(201).json({ message: "Consultation started.", data });
   } catch (error) {
@@ -49,7 +50,8 @@ const completeConsultation = async (req, res, next) => {
     const data = await service.completeConsultation(
       req.params.id,
       req.user,
-      req.validatedConsultationDraft
+      req.validatedConsultationDraft,
+      req
     );
     res.json({ message: "Consultation completed.", data });
   } catch (error) {

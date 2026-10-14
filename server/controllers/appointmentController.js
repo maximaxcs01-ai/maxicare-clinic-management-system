@@ -1,5 +1,6 @@
 const service = require("../services/appointmentService");
 const queueService = require("../services/queueService");
+const { recordRequestAudit } = require("../services/auditService");
 
 const createAppointment = async (req, res, next) => {
   try {
@@ -7,6 +8,20 @@ const createAppointment = async (req, res, next) => {
       req.user,
       req.validatedAppointment
     );
+    await recordRequestAudit(req, {
+      action: "appointment.booked",
+      entityType: "Appointment",
+      entityId: appointment._id,
+      patientId: appointment.patientId?._id || appointment.patientId,
+      description: "Appointment booked.",
+      metadata: {
+        patientId: appointment.patientId?._id || appointment.patientId,
+        doctorId: appointment.doctorId?._id || appointment.doctorId,
+        serviceId: appointment.serviceId?._id || appointment.serviceId,
+        status: appointment.status,
+        bookingType: appointment.bookingType,
+      },
+    });
     res.status(201).json({
       message: "Appointment booked successfully.",
       data: appointment,
@@ -74,6 +89,14 @@ const getAppointment = async (req, res, next) => {
 const confirmAppointment = async (req, res, next) => {
   try {
     const appointment = await service.confirmAppointment(req.params.id, req.user);
+    await recordRequestAudit(req, {
+      action: "appointment.confirmed",
+      entityType: "Appointment",
+      entityId: appointment._id,
+      patientId: appointment.patientId?._id || appointment.patientId,
+      description: "Appointment confirmed.",
+      metadata: { status: appointment.status, patientId: appointment.patientId?._id || appointment.patientId },
+    });
     res.json({
       message: "Appointment confirmed successfully.",
       data: appointment,
@@ -90,6 +113,14 @@ const rejectAppointment = async (req, res, next) => {
       req.user,
       req.validatedRejection
     );
+    await recordRequestAudit(req, {
+      action: "appointment.rejected",
+      entityType: "Appointment",
+      entityId: appointment._id,
+      patientId: appointment.patientId?._id || appointment.patientId,
+      description: "Appointment rejected.",
+      metadata: { status: appointment.status, patientId: appointment.patientId?._id || appointment.patientId },
+    });
     res.json({
       message: "Appointment rejected successfully.",
       data: appointment,
@@ -106,6 +137,14 @@ const cancelAppointment = async (req, res, next) => {
       req.user,
       req.validatedCancellation || {}
     );
+    await recordRequestAudit(req, {
+      action: "appointment.cancelled",
+      entityType: "Appointment",
+      entityId: appointment._id,
+      patientId: appointment.patientId?._id || appointment.patientId,
+      description: "Appointment cancelled.",
+      metadata: { status: appointment.status, patientId: appointment.patientId?._id || appointment.patientId },
+    });
     res.json({
       message: "Appointment cancelled successfully.",
       data: appointment,
@@ -120,7 +159,8 @@ const rescheduleAppointment = async (req, res, next) => {
     const appointment = await service.rescheduleAppointment(
       req.params.id,
       req.user,
-      req.validatedReschedule
+      req.validatedReschedule,
+      req
     );
     res.json({
       message: "Appointment rescheduled successfully.",
@@ -135,7 +175,8 @@ const checkInAppointment = async (req, res, next) => {
   try {
     const data = await queueService.checkInScheduledAppointment(
       req.params.id,
-      req.user
+      req.user,
+      req
     );
     res.json({ message: "Appointment checked in successfully.", data });
   } catch (error) {
@@ -147,7 +188,8 @@ const addAppointmentToQueue = async (req, res, next) => {
   try {
     const data = await queueService.addCheckedInAppointmentToQueue(
       req.params.id,
-      req.user
+      req.user,
+      req
     );
     res.json({ message: "Patient added to the queue.", data });
   } catch (error) {

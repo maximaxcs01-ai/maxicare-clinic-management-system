@@ -187,7 +187,7 @@ const validateAccountSetupToken = async (req, res, next) => {
 
 const setAccountPassword = async (req, res, next) => {
   try {
-    await completeSetup(req.validatedAuth);
+    await completeSetup(req.validatedAuth, req);
     res.status(200).json({
       message: "Password set successfully. You can now log in.",
     });

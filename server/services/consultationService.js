@@ -5,6 +5,7 @@ const Doctor = require("../models/Doctor");
 const QueueEntry = require("../models/QueueEntry");
 const AppError = require("../utils/AppError");
 const { buildPagination, getPagination } = require("../utils/pagination");
+const { recordAudit } = require("./auditService");
 
 const CONSULTATION_DUPLICATE_INDEX = "consultation_appointment_unique";
 
@@ -30,7 +31,7 @@ const populateConsultation = (query) =>
     .populate("serviceId", "name durationMinutes")
     .populate("appointmentId", "bookingType");
 
-const startConsultation = async (queueEntryId, user) => {
+const startConsultation = async (queueEntryId, user, request) => {
   assertObjectId(queueEntryId, "queue entry");
   const doctor = await getDoctorForUser(user._id);
   const session = await mongoose.startSession();
@@ -100,6 +101,26 @@ const startConsultation = async (queueEntryId, user) => {
       queueEntry.queueStatus = "in_consultation";
       queueEntry.active = false;
       await queueEntry.save({ session });
+      if (request) {
+        await recordAudit(
+          {
+            actorUserId: user._id,
+            actorRole: user.role,
+            action: "consultation.started",
+            entityType: "Consultation",
+            entityId: consultation._id,
+            patientId: consultation.patientId,
+            description: "Consultation started.",
+            metadata: {
+              patientId: consultation.patientId,
+              appointmentId: appointment._id,
+              status: consultation.status,
+            },
+          },
+          request,
+          session
+        );
+      }
       consultationId = consultation._id;
     });
   } catch (error) {
@@ -170,7 +191,7 @@ const saveDraft = async (consultationId, user, draft) => {
   );
 };
 
-const completeConsultation = async (consultationId, user, draft) => {
+const completeConsultation = async (consultationId, user, draft, request) => {
   assertObjectId(consultationId, "consultation");
   if (
     !draft.diagnosis?.trim() ||
@@ -247,6 +268,26 @@ const completeConsultation = async (consultationId, user, draft) => {
       queueEntry.queueStatus = "completed";
       queueEntry.active = false;
       await queueEntry.save({ session });
+      if (request) {
+        await recordAudit(
+          {
+            actorUserId: user._id,
+            actorRole: user.role,
+            action: "consultation.completed",
+            entityType: "Consultation",
+            entityId: consultation._id,
+            patientId: consultation.patientId,
+            description: "Consultation completed.",
+            metadata: {
+              patientId: consultation.patientId,
+              appointmentId: appointment._id,
+              status: consultation.status,
+            },
+          },
+          request,
+          session
+        );
+      }
     });
   } finally {
     await session.endSession();

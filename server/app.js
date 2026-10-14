@@ -25,6 +25,7 @@ const prescriptionRoutes = require("./routes/prescriptionRoutes");
 const patientRecordsRoutes = require("./routes/patientRecordsRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const auditRoutes = require("./routes/auditRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -98,6 +99,7 @@ app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/records", patientRecordsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/audit-logs", auditRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

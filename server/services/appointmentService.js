@@ -11,6 +11,7 @@ const {
   SLOT_DURATION_MINUTES,
   getManilaDateAndMinutes,
 } = require("./availabilityService");
+const { recordAudit } = require("./auditService");
 
 const SLOT_UNAVAILABLE_MESSAGE = "The selected appointment slot is no longer available.";
 const TERMINAL_STATUSES = ["cancelled", "rejected", "completed", "no_show"];
@@ -394,7 +395,8 @@ const cancelAppointment = async (appointmentId, user, { cancellationReason }) =>
 const rescheduleAppointment = async (
   appointmentId,
   user,
-  { date, time, reason, overrideReason }
+  { date, time, reason, overrideReason },
+  request
 ) => {
   if (!mongoose.isValidObjectId(appointmentId)) {
     throw new AppError("Invalid appointment", 400);
@@ -534,6 +536,28 @@ const rescheduleAppointment = async (
       });
 
       await target.save({ session });
+      if (request) {
+        await recordAudit(
+          {
+            actorUserId: user._id,
+            actorRole: user.role,
+            action: "appointment.rescheduled",
+            entityType: "Appointment",
+            entityId: target._id,
+            patientId: target.patientId,
+            description: "Appointment rescheduled.",
+            metadata: {
+              patientId: target.patientId,
+              doctorId: target.doctorId,
+              serviceId: target.serviceId,
+              status: target.status,
+              rescheduleCount: target.rescheduleCount,
+            },
+          },
+          request,
+          session
+        );
+      }
     });
   } catch (error) {
     if (error.code === 11000) {

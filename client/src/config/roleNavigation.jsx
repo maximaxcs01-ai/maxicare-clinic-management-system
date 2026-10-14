@@ -12,6 +12,7 @@ import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined
 import QueueOutlinedIcon from '@mui/icons-material/QueueOutlined'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined'
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 
 export const roleNavigation = {
   patient: [
@@ -126,6 +127,7 @@ export const roleNavigation = {
     { label: 'Services', path: '/admin/services', icon: ScienceOutlinedIcon },
     { label: 'Users', path: '/admin/users', icon: GroupsOutlinedIcon },
     { label: 'Reports', path: '/admin/reports', icon: ReceiptLongOutlinedIcon },
+    { label: 'Audit Logs', path: '/admin/audit-logs', icon: FactCheckOutlinedIcon },
     {
       label: 'Profile',
       path: '/admin/profile',

@@ -1,14 +1,18 @@
 const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
+const Appointment = require("../models/Appointment");
+const Consultation = require("../models/Consultation");
 const Doctor = require("../models/Doctor");
 const DoctorSchedule = require("../models/DoctorSchedule");
+const QueueEntry = require("../models/QueueEntry");
 const Service = require("../models/Service");
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
 const { getNextDoctorNumber } = require("./doctorNumberService");
 const { buildPagination, escapeRegex, getPagination } = require("../utils/pagination");
 const { sendDoctorInvitation } = require("./accountSetupService");
+const { recordAudit } = require("./auditService");
 
 const ensureServicesExist = async (serviceIds, session) => {
   const count = await Service.countDocuments({ _id: { $in: serviceIds } }).session(session || null);
@@ -59,7 +63,7 @@ const getMyDoctor = (userId) =>
     .populate("serviceIds", "name status")
     .populate("userId", "passwordSetupRequired status");
 
-const createDoctor = async (data) => {
+const createDoctor = async (data, actor, request) => {
   const internalPassword = crypto.randomBytes(24).toString("base64url");
   const password = await bcrypt.hash(internalPassword, 10);
   const session = await mongoose.startSession();
@@ -85,6 +89,21 @@ const createDoctor = async (data) => {
         userId: user._id,
         doctorNumber,
       }], { session });
+      if (request) {
+        await recordAudit(
+          {
+            actorUserId: actor._id,
+            actorRole: actor.role,
+            action: "doctor.created",
+            entityType: "Doctor",
+            entityId: createdDoctor._id,
+            description: "Doctor account and profile created.",
+            metadata: { doctorId: createdDoctor._id, userId: user._id },
+          },
+          request,
+          session
+        );
+      }
 
       try {
         await sendDoctorInvitation(user);
@@ -131,6 +150,17 @@ const updateDoctor = async (id, data) => {
 };
 
 const deleteDoctor = async (id) => {
+  const hasClinicalHistory = await Promise.all([
+    Appointment.exists({ doctorId: id }),
+    Consultation.exists({ doctorId: id }),
+    QueueEntry.exists({ doctorId: id }),
+  ]);
+  if (hasClinicalHistory.some(Boolean)) {
+    throw new AppError(
+      "Doctors with appointment or clinical history cannot be deleted; deactivate the account instead.",
+      409
+    );
+  }
   const session = await mongoose.startSession();
   let deleted = false;
   try {

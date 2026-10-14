@@ -6,6 +6,8 @@ const Patient = require("../models/Patient");
 const QueueEntry = require("../models/QueueEntry");
 const Service = require("../models/Service");
 const AppError = require("../utils/AppError");
+const AuditLog = require("../models/AuditLog");
+const { recordAudit } = require("./auditService");
 const patientService = require("./patientService");
 const {
   CLINIC_TIMEZONE,
@@ -116,6 +118,13 @@ const getTodayQueueCounts = async (doctorIds, session) => {
 
 const expireStaleQueueEntriesBeforeEnqueue = async (session) => {
   const { start } = getManilaDayBounds();
+  const staleQuery = QueueEntry.find({
+    active: true,
+    queueStatus: { $in: ACTIVE_QUEUE_STATUSES },
+    joinedAt: { $lt: start },
+  });
+  if (session) staleQuery.session(session);
+  const staleEntries = await staleQuery.select("_id patientId");
   const update = QueueEntry.updateMany(
     {
       active: true,
@@ -133,6 +142,20 @@ const expireStaleQueueEntriesBeforeEnqueue = async (session) => {
   );
   if (session) update.session(session);
   await update;
+  if (staleEntries.length) {
+    await AuditLog.insertMany(
+      staleEntries.map((entry) => ({
+        actorRole: "system",
+        action: "queue.expired",
+        entityType: "QueueEntry",
+        entityId: entry._id,
+        patientId: entry.patientId,
+        description: "Stale queue entry expired after its clinic day ended.",
+        metadata: { patientId: entry.patientId, status: "expired" },
+      })),
+      { session }
+    );
+  }
 };
 
 const selectNextDoctor = async (serviceId, session) => {
@@ -211,7 +234,7 @@ const getQueuePosition = async (queueEntry) => {
   return entries.findIndex((entry) => String(entry._id) === String(queueEntry._id)) + 1;
 };
 
-const createWalkIn = async (input, user) => {
+const createWalkIn = async (input, user, request) => {
   const session = await mongoose.startSession();
   let appointmentId;
   let queueEntryId;
@@ -280,6 +303,46 @@ const createWalkIn = async (input, user) => {
         "Walk-in added to the queue"
       );
       await appointment.save({ session });
+      if (request) {
+        await recordAudit(
+          {
+            actorUserId: user._id,
+            actorRole: user.role,
+            action: "walk_in.created",
+            entityType: "QueueEntry",
+            entityId: queueEntry._id,
+            patientId: patient._id,
+            description: "Walk-in visit added to the queue.",
+            metadata: {
+              patientId: patient._id,
+              doctorId: doctor._id,
+              serviceId: service._id,
+              status: queueEntry.queueStatus,
+              bookingType: "walk_in",
+            },
+          },
+          request,
+          session
+        );
+        await recordAudit(
+          {
+            actorUserId: user._id,
+            actorRole: user.role,
+            action: "queue.entry_created",
+            entityType: "QueueEntry",
+            entityId: queueEntry._id,
+            patientId: patient._id,
+            description: "Walk-in added to the queue.",
+            metadata: {
+              patientId: patient._id,
+              appointmentId: appointment._id,
+              status: queueEntry.queueStatus,
+            },
+          },
+          request,
+          session
+        );
+      }
 
       appointmentId = appointment._id;
       queueEntryId = queueEntry._id;
@@ -308,7 +371,7 @@ const createWalkIn = async (input, user) => {
   };
 };
 
-const checkInScheduledAppointment = async (appointmentId, user) => {
+const checkInScheduledAppointment = async (appointmentId, user, request) => {
   if (!mongoose.isValidObjectId(appointmentId)) {
     throw new AppError("Invalid appointment", 400);
   }
@@ -336,6 +399,22 @@ const checkInScheduledAppointment = async (appointmentId, user) => {
         "Patient checked in at the clinic"
       );
       await appointment.save({ session });
+      if (request) {
+        await recordAudit(
+          {
+            actorUserId: user._id,
+            actorRole: user.role,
+            action: "appointment.checked_in",
+            entityType: "Appointment",
+            entityId: appointment._id,
+            patientId: appointment.patientId,
+            description: "Appointment checked in.",
+            metadata: { patientId: appointment.patientId, status: appointment.status },
+          },
+          request,
+          session
+        );
+      }
     });
   } finally {
     await session.endSession();
@@ -343,7 +422,7 @@ const checkInScheduledAppointment = async (appointmentId, user) => {
   return appointmentPopulation(Appointment.findById(appointmentId));
 };
 
-const addCheckedInAppointmentToQueue = async (appointmentId, user) => {
+const addCheckedInAppointmentToQueue = async (appointmentId, user, request) => {
   if (!mongoose.isValidObjectId(appointmentId)) {
     throw new AppError("Invalid appointment", 400);
   }
@@ -384,6 +463,26 @@ const addCheckedInAppointmentToQueue = async (appointmentId, user) => {
         "Checked-in patient added to the queue"
       );
       await appointment.save({ session });
+      if (request) {
+        await recordAudit(
+          {
+            actorUserId: user._id,
+            actorRole: user.role,
+            action: "queue.entry_created",
+            entityType: "QueueEntry",
+            entityId: queueEntry._id,
+            patientId: appointment.patientId,
+            description: "Checked-in appointment added to the queue.",
+            metadata: {
+              appointmentId: appointment._id,
+              patientId: appointment.patientId,
+              status: queueEntry.queueStatus,
+            },
+          },
+          request,
+          session
+        );
+      }
       queueEntryId = queueEntry._id;
     });
   } catch (error) {

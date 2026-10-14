@@ -10,7 +10,7 @@ const getNextDoctor = async (req, res, next) => {
 
 const createWalkIn = async (req, res, next) => {
   try {
-    const data = await queueService.createWalkIn(req.validatedWalkIn, req.user);
+    const data = await queueService.createWalkIn(req.validatedWalkIn, req.user, req);
     res.status(201).json({
       message: "Walk-in patient added to the queue.",
       data,
