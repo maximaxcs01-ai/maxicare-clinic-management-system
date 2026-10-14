@@ -13,9 +13,13 @@ function StatusChip({ status }) {
     norm === 'waiting' ||
     norm === 'called' ||
     norm === 'in_progress' ||
-    norm === 'in_consultation'
+    norm === 'in_consultation' ||
+    norm === 'draft'
   ) {
     color = 'info'
+    variant = 'filled'
+  } else if (norm === 'issued') {
+    color = 'success'
     variant = 'filled'
   } else if (norm === 'checked_in') {
     color = 'primary'

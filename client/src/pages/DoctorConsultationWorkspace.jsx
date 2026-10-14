@@ -20,6 +20,10 @@ import {
   getConsultation,
   saveConsultationDraft,
 } from '../services/appointmentApi'
+import {
+  createPrescription,
+  getPrescriptionForConsultation,
+} from '../services/prescriptionApi'
 
 const VITAL_FIELDS = [
   ['systolic', 'Systolic BP', 'mmHg'],
@@ -84,6 +88,7 @@ function DoctorConsultationWorkspace() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [prescriptionLoading, setPrescriptionLoading] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -158,6 +163,35 @@ function DoctorConsultationWorkspace() {
     }
   }
 
+  const handleOpenPrescription = async () => {
+    setPrescriptionLoading(true)
+    try {
+      let prescription
+      try {
+        const existing = await getPrescriptionForConsultation(id)
+        prescription = existing.data.data
+      } catch (requestError) {
+        if (requestError.response?.status !== 404) throw requestError
+        try {
+          const created = await createPrescription(id)
+          prescription = created.data.data
+        } catch (createError) {
+          if (createError.response?.status !== 409) throw createError
+          const existing = await getPrescriptionForConsultation(id)
+          prescription = existing.data.data
+        }
+      }
+      navigate(`/doctor/prescriptions/${prescription._id}`)
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          'Unable to open a prescription for this consultation.',
+      )
+    } finally {
+      setPrescriptionLoading(false)
+    }
+  }
+
   const readOnly = consultation?.status === 'completed'
   const consultationMatchesRoute =
     consultation && String(consultation._id) === id
@@ -204,6 +238,12 @@ function DoctorConsultationWorkspace() {
         </Box>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <StatusChip status={consultation.status} />
+          <Button
+            disabled={prescriptionLoading}
+            onClick={handleOpenPrescription}
+          >
+            {prescriptionLoading ? 'Opening…' : 'Prescription'}
+          </Button>
           <Button
             startIcon={<ArrowBackOutlinedIcon />}
             onClick={() => navigate('/doctor/consultations')}

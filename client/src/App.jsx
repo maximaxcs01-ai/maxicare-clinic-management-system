@@ -29,6 +29,8 @@ import WalkInsManagement from './pages/WalkInsManagement'
 import DoctorAppointments from './pages/DoctorAppointments'
 import DoctorConsultations from './pages/DoctorConsultations'
 import DoctorConsultationWorkspace from './pages/DoctorConsultationWorkspace'
+import DoctorPrescriptions from './pages/DoctorPrescriptions'
+import DoctorPrescriptionWorkspace from './pages/DoctorPrescriptionWorkspace'
 import { getRoleDestination } from './utils/authRoutes'
 import './App.css'
 
@@ -169,7 +171,11 @@ function AppRoutes() {
           />
           <Route
             path="/doctor/prescriptions"
-            element={placeholder('Prescriptions')}
+            element={<DoctorPrescriptions />}
+          />
+          <Route
+            path="/doctor/prescriptions/:id"
+            element={<DoctorPrescriptionWorkspace />}
           />
           <Route path="/doctor/profile" element={<Profile />} />
           <Route
