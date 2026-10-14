@@ -10,6 +10,8 @@ import Login from './pages/Login'
 import PatientForm from './pages/PatientForm'
 import Patients from './pages/Patients'
 import PatientAppointments from './pages/PatientAppointments'
+import PatientMedicalHistory from './pages/PatientMedicalHistory'
+import PatientMedicalRecord from './pages/PatientMedicalRecord'
 import BookAppointment from './pages/BookAppointment'
 import Profile from './pages/Profile'
 import Register from './pages/Register'
@@ -27,6 +29,8 @@ import AppointmentsManagement from './pages/AppointmentsManagement'
 import QueueManagement from './pages/QueueManagement'
 import WalkInsManagement from './pages/WalkInsManagement'
 import DoctorAppointments from './pages/DoctorAppointments'
+import DoctorPatients from './pages/DoctorPatients'
+import DoctorPatientRecord from './pages/DoctorPatientRecord'
 import DoctorConsultations from './pages/DoctorConsultations'
 import DoctorConsultationWorkspace from './pages/DoctorConsultationWorkspace'
 import DoctorPrescriptions from './pages/DoctorPrescriptions'
@@ -104,10 +108,11 @@ function AppRoutes() {
           />
           <Route
             path="/patient/medical-history"
-            element={placeholder(
-              'Medical History',
-              'Your medical history will be available in a later development phase.',
-            )}
+            element={<PatientMedicalHistory />}
+          />
+          <Route
+            path="/patient/medical-history/:consultationId"
+            element={<PatientMedicalRecord />}
           />
           <Route
             path="/patient/prescriptions"
@@ -160,7 +165,11 @@ function AppRoutes() {
             element={<DoctorAppointments />}
           />
           <Route path="/doctor/queue" element={<QueueManagement />} />
-          <Route path="/doctor/patients" element={<Patients />} />
+          <Route path="/doctor/patients" element={<DoctorPatients />} />
+          <Route
+            path="/doctor/patients/:patientId"
+            element={<DoctorPatientRecord />}
+          />
           <Route
             path="/doctor/consultations"
             element={<DoctorConsultations />}

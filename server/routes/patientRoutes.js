@@ -8,6 +8,8 @@ router.use(protect);
 router.get("/me", authorize("patient"), controller.getOwnPatient);
 router.put("/me", authorize("patient"), validateOwnPatient, controller.updateOwnPatient);
 router.get("/walk-in-search", authorize("admin", "receptionist"), controller.searchWalkInPatients);
+router.post("/:id/portal-activation", authorize("admin", "receptionist"), controller.activatePatientPortal);
+router.post("/:id/resend-activation-invitation", authorize("admin", "receptionist"), controller.resendPatientActivation);
 router.get("/", authorize("admin", "receptionist", "doctor"), controller.getPatients);
 router.post("/", authorize("admin", "receptionist"), validatePatient, controller.createPatient);
 router.get("/:id", authorize("admin", "receptionist", "doctor"), controller.getPatientById);

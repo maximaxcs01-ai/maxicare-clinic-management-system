@@ -100,9 +100,23 @@ const sendDoctorInvitationEmail = async ({ email, firstName, lastName, setupUrl 
   });
 };
 
+const sendPatientInvitationEmail = async ({ email, firstName, lastName, setupUrl }) => {
+  const safeName = escapeHtml(`${firstName} ${lastName}`.trim() || firstName || "Patient");
+  const safeSetupUrl = escapeHtml(setupUrl);
+
+  await sendEmail({
+    email,
+    name: `${firstName} ${lastName}`.trim() || firstName || "Patient",
+    subject: "Activate your Maxicare Clinic patient portal",
+    htmlContent: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#102a43;line-height:1.6"><h2>Maxicare Clinic</h2><p>Hello ${safeName},</p><p>Your existing clinic patient record has been linked to the patient portal.</p><p>Set a password to activate portal access.</p><p><a href="${safeSetupUrl}" style="display:inline-block;padding:12px 20px;background:#0f766e;color:white;text-decoration:none;border-radius:6px;font-weight:700">Activate My Portal</a></p><p>This link will expire in 24 hours. If you were not expecting this invitation, please contact the clinic.</p></body></html>`,
+    errorMessage: "Unable to send patient activation email. Please try again.",
+  });
+};
+
 module.exports = {
   getEmailConfiguration,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendDoctorInvitationEmail,
+  sendPatientInvitationEmail,
 };

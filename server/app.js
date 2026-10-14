@@ -22,6 +22,7 @@ const walkInRoutes = require("./routes/walkInRoutes");
 const queueRoutes = require("./routes/queueRoutes");
 const consultationRoutes = require("./routes/consultationRoutes");
 const prescriptionRoutes = require("./routes/prescriptionRoutes");
+const patientRecordsRoutes = require("./routes/patientRecordsRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -92,6 +93,7 @@ app.use("/api/walk-ins", walkInRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/consultations", consultationRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
+app.use("/api/records", patientRecordsRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

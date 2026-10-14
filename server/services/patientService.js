@@ -1,4 +1,6 @@
 const Patient = require("../models/Patient");
+const Appointment = require("../models/Appointment");
+const Consultation = require("../models/Consultation");
 const AppError = require("../utils/AppError");
 const { getNextPatientNumber } = require("./patientNumberService");
 const { buildPagination, escapeRegex, getPagination } = require("../utils/pagination");
@@ -78,6 +80,13 @@ const deletePatient = async (id) => {
   const patient = await Patient.findById(id);
   if (!patient) return null;
   if (patient.userId) throw new AppError("Portal-linked patients cannot be deleted", 409);
+  const [hasAppointments, hasConsultations] = await Promise.all([
+    Appointment.exists({ patientId: id }),
+    Consultation.exists({ patientId: id }),
+  ]);
+  if (hasAppointments || hasConsultations) {
+    throw new AppError("Patients with medical or appointment history cannot be deleted", 409);
+  }
   return Patient.findByIdAndDelete(id);
 };
 

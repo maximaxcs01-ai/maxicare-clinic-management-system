@@ -1,11 +1,16 @@
 const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 
 const AccountSetupToken = require("../models/AccountSetupToken");
+const Patient = require("../models/Patient");
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
 const { requireOtpSecret, hashAccountSetupToken, verifyAccountSetupTokenHash } = require("./otpService");
-const { sendDoctorInvitationEmail } = require("./emailService");
+const {
+  sendDoctorInvitationEmail,
+  sendPatientInvitationEmail,
+} = require("./emailService");
 
 const SETUP_TOKEN_VALIDITY_MS = 24 * 60 * 60 * 1000;
 
@@ -37,20 +42,28 @@ const createSetupTokenRecord = async ({ userId, email, token }) => {
 };
 
 const sendDoctorInvitation = async (user) => {
+  await sendAccountSetupInvitation(user, "doctor");
+};
+
+const sendPatientInvitation = async (user) => {
+  await sendAccountSetupInvitation(user, "patient");
+};
+
+const sendAccountSetupInvitation = async (user, role) => {
   const origin = (process.env.CLIENT_ORIGIN || "http://localhost:5173").replace(/\/$/, "");
   const token = generateSetupToken();
 
   await createSetupTokenRecord({ userId: user._id, email: user.email, token });
 
   const setupUrl = `${origin}/setup-account?token=${encodeURIComponent(token)}`;
-  await sendDoctorInvitationEmail({
+  const sendInvitationEmail =
+    role === "patient" ? sendPatientInvitationEmail : sendDoctorInvitationEmail;
+  await sendInvitationEmail({
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
     setupUrl,
   });
-
-  return { token, setupUrl };
 };
 
 const findMatchingAccountSetupToken = async (token) => {
@@ -104,32 +117,56 @@ const completeSetup = async ({ token, newPassword, confirmPassword }) => {
     throw new AppError("This account setup link has already been used or has expired.", 400);
   }
 
-  const user = await User.findById(record.userId).select("+password +passwordSetupRequired +tokenVersion");
-  if (!user) {
-    throw new AppError("This account setup link is invalid or has expired.", 400);
-  }
-
-  if (user.passwordSetupRequired !== true) {
-    throw new AppError("This account setup link has already been used or has expired.", 400);
-  }
-
   const passwordHash = await bcrypt.hash(newPassword, 10);
+  const session = await mongoose.startSession();
+  let completedUser;
+  try {
+    await session.withTransaction(async () => {
+      const tokenRecord = await AccountSetupToken.findById(record._id).session(session);
+      const user = await User.findById(record.userId)
+        .select("+password +passwordSetupRequired +tokenVersion")
+        .session(session);
+      if (!tokenRecord || tokenRecord.expiresAt.getTime() <= Date.now() || !user) {
+        throw new AppError("This account setup link is invalid or has expired.", 400);
+      }
+      if (user.passwordSetupRequired !== true) {
+        throw new AppError(
+          "This account setup link has already been used or has expired.",
+          400
+        );
+      }
 
-  await User.findByIdAndUpdate(
-    user._id,
-    {
-      $set: {
-        password: passwordHash,
-        passwordSetupRequired: false,
-        tokenVersion: (user.tokenVersion || 0) + 1,
-      },
-    },
-    { runValidators: true }
-  );
+      completedUser = await User.findOneAndUpdate(
+        { _id: user._id, passwordSetupRequired: true },
+        {
+          $set: {
+            password: passwordHash,
+            passwordSetupRequired: false,
+            emailVerified: true,
+            tokenVersion: (user.tokenVersion || 0) + 1,
+          },
+        },
+        { new: true, runValidators: true, session }
+      );
+      if (!completedUser) {
+        throw new AppError(
+          "This account setup link has already been used or has expired.",
+          400
+        );
+      }
 
-  await AccountSetupToken.deleteOne({ _id: record._id });
+      await Patient.updateOne(
+        { userId: user._id },
+        { $set: { portalStatus: "active" } },
+        { session }
+      );
+      await AccountSetupToken.deleteOne({ _id: record._id }, { session });
+    });
+  } finally {
+    await session.endSession();
+  }
 
-  return { userId: user._id, email: user.email };
+  return { userId: completedUser._id, email: completedUser.email };
 };
 
 const resendInvitation = async (user) => {
@@ -146,6 +183,7 @@ module.exports = {
   maskEmail,
   generateSetupToken,
   sendDoctorInvitation,
+  sendPatientInvitation,
   validateSetupToken,
   completeSetup,
   resendInvitation,

@@ -134,7 +134,7 @@ function SetupAccount() {
       <section className="auth-card">
         <h1>Set up your account</h1>
         <p className="subtitle">
-          Create a password for {emailLabel || 'your doctor account'}.
+          Create a password for {emailLabel || 'your clinic account'}.
         </p>
 
         {error && <div className="message error-message">{error}</div>}
