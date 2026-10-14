@@ -23,6 +23,7 @@ import VerifyResetOtp from './pages/VerifyResetOtp'
 import DoctorsManagement from './pages/admin/DoctorsManagement'
 import ServicesManagement from './pages/admin/ServicesManagement'
 import UsersManagement from './pages/admin/UsersManagement'
+import Reports from './pages/admin/Reports'
 import DoctorSchedulePage from './pages/DoctorSchedulePage'
 import ReceptionistDoctorsPage from './pages/receptionist/Doctors'
 import AppointmentsManagement from './pages/AppointmentsManagement'
@@ -211,7 +212,7 @@ function AppRoutes() {
           <Route path="/admin/queue" element={<QueueManagement />} />
           <Route path="/admin/services" element={<ServicesManagement />} />
           <Route path="/admin/users" element={<UsersManagement />} />
-          <Route path="/admin/reports" element={placeholder('Reports')} />
+          <Route path="/admin/reports" element={<Reports />} />
           <Route path="/admin/profile" element={<Profile />} />
           <Route
             path="/admin/account-settings"
