@@ -40,12 +40,57 @@ const appointmentSchema = new mongoose.Schema(
     },
     bookingType: {
       type: String,
-      enum: ["scheduled"],
+      enum: ["scheduled", "walk_in"],
       default: "scheduled",
       required: true,
     },
     reasonForVisit: { type: String, trim: true, maxlength: 1000, default: "" },
     slotReserved: { type: Boolean, default: true, required: true },
+    checkedInAt: { type: Date },
+    checkedInBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    rescheduleCount: { type: Number, default: 0, min: 0 },
+    cancelledAt: { type: Date },
+    cancelledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    cancellationReason: { type: String, trim: true, maxlength: 500 },
+    rejectedAt: { type: Date },
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    rejectionReason: { type: String, trim: true, maxlength: 500 },
+    confirmedAt: { type: Date },
+    confirmedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    lastRescheduledAt: { type: Date },
+    lastRescheduledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    overrideReason: { type: String, trim: true, maxlength: 500 },
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          enum: APPOINTMENT_STATUSES,
+          required: true,
+        },
+        changedAt: { type: Date, default: Date.now },
+        changedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        role: { type: String },
+        reason: { type: String, trim: true, maxlength: 500 },
+      },
+    ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

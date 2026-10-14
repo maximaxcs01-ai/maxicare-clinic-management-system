@@ -1,4 +1,5 @@
 const service = require("../services/appointmentService");
+const queueService = require("../services/queueService");
 
 const createAppointment = async (req, res, next) => {
   try {
@@ -30,14 +31,141 @@ const listMyAppointments = async (req, res, next) => {
   }
 };
 
+const listDoctorAppointments = async (req, res, next) => {
+  try {
+    res.json(
+      await service.listDoctorAppointments(
+        req.user._id,
+        req.doctorAppointmentQuery,
+        req.doctorAppointmentBucket
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getMyAppointment = async (req, res, next) => {
   try {
-    const patient = await service.getPatientForUser(req.user._id);
-    const data = await service.getPatientAppointment(patient._id, req.params.id);
+    const data = await service.getAppointmentById(req.params.id, req.user);
     res.json({ data });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { createAppointment, listMyAppointments, getMyAppointment };
+const listAllAppointments = async (req, res, next) => {
+  try {
+    res.json(await service.listAllAppointments(req.query));
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getAppointment = async (req, res, next) => {
+  try {
+    const data = await service.getAppointmentById(req.params.id, req.user);
+    res.json({ data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const confirmAppointment = async (req, res, next) => {
+  try {
+    const appointment = await service.confirmAppointment(req.params.id, req.user);
+    res.json({
+      message: "Appointment confirmed successfully.",
+      data: appointment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const rejectAppointment = async (req, res, next) => {
+  try {
+    const appointment = await service.rejectAppointment(
+      req.params.id,
+      req.user,
+      req.validatedRejection
+    );
+    res.json({
+      message: "Appointment rejected successfully.",
+      data: appointment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const cancelAppointment = async (req, res, next) => {
+  try {
+    const appointment = await service.cancelAppointment(
+      req.params.id,
+      req.user,
+      req.validatedCancellation || {}
+    );
+    res.json({
+      message: "Appointment cancelled successfully.",
+      data: appointment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const rescheduleAppointment = async (req, res, next) => {
+  try {
+    const appointment = await service.rescheduleAppointment(
+      req.params.id,
+      req.user,
+      req.validatedReschedule
+    );
+    res.json({
+      message: "Appointment rescheduled successfully.",
+      data: appointment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const checkInAppointment = async (req, res, next) => {
+  try {
+    const data = await queueService.checkInScheduledAppointment(
+      req.params.id,
+      req.user
+    );
+    res.json({ message: "Appointment checked in successfully.", data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const addAppointmentToQueue = async (req, res, next) => {
+  try {
+    const data = await queueService.addCheckedInAppointmentToQueue(
+      req.params.id,
+      req.user
+    );
+    res.json({ message: "Patient added to the queue.", data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createAppointment,
+  listMyAppointments,
+  listDoctorAppointments,
+  getMyAppointment,
+  listAllAppointments,
+  getAppointment,
+  confirmAppointment,
+  rejectAppointment,
+  cancelAppointment,
+  rescheduleAppointment,
+  checkInAppointment,
+  addAppointmentToQueue,
+};

@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(protect);
 router.get("/me", authorize("patient"), controller.getOwnPatient);
 router.put("/me", authorize("patient"), validateOwnPatient, controller.updateOwnPatient);
+router.get("/walk-in-search", authorize("admin", "receptionist"), controller.searchWalkInPatients);
 router.get("/", authorize("admin", "receptionist", "doctor"), controller.getPatients);
 router.post("/", authorize("admin", "receptionist"), validatePatient, controller.createPatient);
 router.get("/:id", authorize("admin", "receptionist", "doctor"), controller.getPatientById);

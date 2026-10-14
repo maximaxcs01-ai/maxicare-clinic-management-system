@@ -4,12 +4,88 @@ const { protect, authorize } = require("../middleware/authMiddleware");
 const {
   validateAppointmentBooking,
   validateAppointmentListQuery,
+  validateDoctorAppointmentQuery,
+  validateStaffAppointmentQuery,
+  validateAppointmentRejection,
+  validateAppointmentCancellation,
+  validateAppointmentReschedule,
 } = require("../validators/appointmentValidator");
 
 const router = express.Router();
-router.use(protect, authorize("patient"));
-router.get("/my", validateAppointmentListQuery, controller.listMyAppointments);
-router.post("/", validateAppointmentBooking, controller.createAppointment);
-router.get("/:id", controller.getMyAppointment);
+
+router.use(protect);
+
+router.get(
+  "/my",
+  authorize("patient"),
+  validateAppointmentListQuery,
+  controller.listMyAppointments
+);
+
+router.get(
+  "/doctor/my",
+  authorize("doctor"),
+  validateDoctorAppointmentQuery,
+  controller.listDoctorAppointments
+);
+
+router.post(
+  "/",
+  authorize("patient"),
+  validateAppointmentBooking,
+  controller.createAppointment
+);
+
+router.get(
+  "/",
+  authorize("admin", "receptionist"),
+  validateStaffAppointmentQuery,
+  controller.listAllAppointments
+);
+
+router.get(
+  "/:id",
+  authorize("patient", "admin", "receptionist"),
+  controller.getAppointment
+);
+
+router.patch(
+  "/:id/confirm",
+  authorize("admin", "receptionist"),
+  controller.confirmAppointment
+);
+
+router.patch(
+  "/:id/reject",
+  authorize("admin", "receptionist"),
+  validateAppointmentRejection,
+  controller.rejectAppointment
+);
+
+router.patch(
+  "/:id/cancel",
+  authorize("patient"),
+  validateAppointmentCancellation,
+  controller.cancelAppointment
+);
+
+router.patch(
+  "/:id/check-in",
+  authorize("admin", "receptionist"),
+  controller.checkInAppointment
+);
+
+router.post(
+  "/:id/queue",
+  authorize("admin", "receptionist"),
+  controller.addAppointmentToQueue
+);
+
+router.patch(
+  "/:id/reschedule",
+  authorize("patient", "admin", "receptionist"),
+  validateAppointmentReschedule,
+  controller.rescheduleAppointment
+);
 
 module.exports = router;

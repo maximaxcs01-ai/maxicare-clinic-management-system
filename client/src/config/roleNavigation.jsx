@@ -7,6 +7,7 @@ import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import LocalHospitalOutlinedIcon from '@mui/icons-material/LocalHospitalOutlined'
 import MedicalServicesOutlinedIcon from '@mui/icons-material/MedicalServicesOutlined'
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined'
+import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined'
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
 import QueueOutlinedIcon from '@mui/icons-material/QueueOutlined'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
@@ -52,6 +53,11 @@ export const roleNavigation = {
       path: '/receptionist/appointments',
       icon: CalendarMonthOutlinedIcon,
     },
+    {
+      label: 'Walk-Ins',
+      path: '/receptionist/walk-ins',
+      icon: PersonAddAltOutlinedIcon,
+    },
     { label: 'Queue', path: '/receptionist/queue', icon: QueueOutlinedIcon },
     {
       label: 'Doctors',
@@ -71,6 +77,12 @@ export const roleNavigation = {
       path: '/doctor/schedule',
       icon: EventNoteOutlinedIcon,
     },
+    {
+      label: 'Appointments',
+      path: '/doctor/appointments',
+      icon: CalendarMonthOutlinedIcon,
+    },
+    { label: 'My Queue', path: '/doctor/queue', icon: QueueOutlinedIcon },
     {
       label: 'Patients',
       path: '/doctor/patients',
@@ -109,6 +121,8 @@ export const roleNavigation = {
       path: '/admin/appointments',
       icon: CalendarMonthOutlinedIcon,
     },
+    { label: 'Walk-Ins', path: '/admin/walk-ins', icon: PersonAddAltOutlinedIcon },
+    { label: 'Queue', path: '/admin/queue', icon: QueueOutlinedIcon },
     { label: 'Services', path: '/admin/services', icon: ScienceOutlinedIcon },
     { label: 'Users', path: '/admin/users', icon: GroupsOutlinedIcon },
     { label: 'Reports', path: '/admin/reports', icon: ReceiptLongOutlinedIcon },

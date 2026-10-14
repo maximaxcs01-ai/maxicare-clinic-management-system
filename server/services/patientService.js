@@ -2,6 +2,7 @@ const Patient = require("../models/Patient");
 const AppError = require("../utils/AppError");
 const { getNextPatientNumber } = require("./patientNumberService");
 const { buildPagination, escapeRegex, getPagination } = require("../utils/pagination");
+const mongoose = require("mongoose");
 
 const findPatients = async (query) => {
   const { page, limit, skip } = getPagination(query);
@@ -25,11 +26,48 @@ const findPatients = async (query) => {
   return { data, pagination: buildPagination(page, limit, total) };
 };
 
+const searchWalkInPatients = async (query) => {
+  const search = typeof query.search === "string" ? query.search.trim() : "";
+  if (search.length < 2) {
+    return { data: [], pagination: buildPagination(1, 10, 0) };
+  }
+
+  const { page, limit, skip } = getPagination({ ...query, limit: Math.min(Number(query.limit) || 10, 25) });
+  const pattern = new RegExp(escapeRegex(search), "i");
+  const filter = {
+    $or: [
+      { patientNumber: pattern },
+      { firstName: pattern },
+      { middleName: pattern },
+      { lastName: pattern },
+      { mobileNumber: pattern },
+      { contactNumber: pattern },
+      { email: pattern },
+    ],
+  };
+  if (mongoose.isValidObjectId(search)) filter.$or.push({ _id: search });
+
+  const [data, total] = await Promise.all([
+    Patient.find(filter)
+      .select("patientNumber firstName middleName lastName suffix mobileNumber contactNumber email portalStatus")
+      .sort({ lastName: 1, firstName: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Patient.countDocuments(filter),
+  ]);
+  return { data, pagination: buildPagination(page, limit, total) };
+};
+
 const findPatientById = (id) => Patient.findById(id);
 const findOwnPatient = (userId) => Patient.findOne({ userId });
 
-const createPatient = async (data) => {
-  const patientNumber = await getNextPatientNumber();
+const createPatient = async (data, session) => {
+  const patientNumber = await getNextPatientNumber(session);
+  if (session) {
+    const [patient] = await Patient.create([{ ...data, patientNumber }], { session });
+    return patient;
+  }
   return Patient.create({ ...data, patientNumber });
 };
 
@@ -43,4 +81,4 @@ const deletePatient = async (id) => {
   return Patient.findByIdAndDelete(id);
 };
 
-module.exports = { findPatients, findPatientById, findOwnPatient, createPatient, updatePatient, updateOwnPatient, deletePatient };
+module.exports = { findPatients, searchWalkInPatients, findPatientById, findOwnPatient, createPatient, updatePatient, updateOwnPatient, deletePatient };

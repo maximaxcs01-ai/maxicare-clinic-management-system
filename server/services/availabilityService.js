@@ -20,6 +20,27 @@ const getManilaNow = () => {
   return { date: `${parts.year}-${parts.month}-${parts.day}`, minutes: Number(parts.hour) * 60 + Number(parts.minute) };
 };
 
+const getManilaDateAndMinutes = (instant = new Date()) => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: CLINIC_TIMEZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(instant)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute),
+  };
+};
+
 const dateValue = (date) => {
   const [year, month, day] = date.split("-").map(Number);
   return Date.UTC(year, month - 1, day);
@@ -50,6 +71,14 @@ const getBaseSchedule = (schedule, date) => {
   if (override?.type === "custom") return override.periods;
   const day = DAY_NAMES[new Date(`${date}T00:00:00.000Z`).getUTCDay()];
   return schedule.weeklySchedule[day] || [];
+};
+
+const isOnDutyNow = (schedule, instant = new Date()) => {
+  if (!schedule || schedule.status !== "active") return false;
+  const { date, minutes } = getManilaDateAndMinutes(instant);
+  return getBaseSchedule(schedule, date).some(
+    (period) => minutes >= toMinutes(period.startTime) && minutes < toMinutes(period.endTime)
+  );
 };
 
 const generateSlots = (periods) => periods.flatMap((period) => {
@@ -104,4 +133,15 @@ const getDoctorAvailability = async ({ doctorId, date, serviceId }) => {
   };
 };
 
-module.exports = { SLOT_DURATION_MINUTES, CLINIC_TIMEZONE, getDoctorAvailability, getBaseSchedule, generateSlots, removePastSlots, removeBookedSlots, toManilaDateTime };
+module.exports = {
+  SLOT_DURATION_MINUTES,
+  CLINIC_TIMEZONE,
+  getDoctorAvailability,
+  getBaseSchedule,
+  generateSlots,
+  removePastSlots,
+  removeBookedSlots,
+  toManilaDateTime,
+  getManilaDateAndMinutes,
+  isOnDutyNow,
+};

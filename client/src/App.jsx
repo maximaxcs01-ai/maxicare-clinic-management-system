@@ -24,6 +24,9 @@ import UsersManagement from './pages/admin/UsersManagement'
 import DoctorSchedulePage from './pages/DoctorSchedulePage'
 import ReceptionistDoctorsPage from './pages/receptionist/Doctors'
 import AppointmentsManagement from './pages/AppointmentsManagement'
+import QueueManagement from './pages/QueueManagement'
+import WalkInsManagement from './pages/WalkInsManagement'
+import DoctorAppointments from './pages/DoctorAppointments'
 import { getRoleDestination } from './utils/authRoutes'
 import './App.css'
 
@@ -128,7 +131,8 @@ function AppRoutes() {
             path="/receptionist/appointments"
             element={<AppointmentsManagement />}
           />
-          <Route path="/receptionist/queue" element={placeholder('Queue')} />
+          <Route path="/receptionist/walk-ins" element={<WalkInsManagement />} />
+          <Route path="/receptionist/queue" element={<QueueManagement />} />
           <Route
             path="/receptionist/doctors"
             element={<ReceptionistDoctorsPage />}
@@ -147,6 +151,11 @@ function AppRoutes() {
         <Route element={<RoleRoute allowedRoles={['doctor']} />}>
           <Route path="/doctor" element={<RoleDashboard />} />
           <Route path="/doctor/schedule" element={<DoctorSchedulePage />} />
+          <Route
+            path="/doctor/appointments"
+            element={<DoctorAppointments />}
+          />
+          <Route path="/doctor/queue" element={<QueueManagement />} />
           <Route path="/doctor/patients" element={<Patients />} />
           <Route
             path="/doctor/consultations"
@@ -177,6 +186,8 @@ function AppRoutes() {
             path="/admin/appointments"
             element={<AppointmentsManagement />}
           />
+          <Route path="/admin/walk-ins" element={<WalkInsManagement />} />
+          <Route path="/admin/queue" element={<QueueManagement />} />
           <Route path="/admin/services" element={<ServicesManagement />} />
           <Route path="/admin/users" element={<UsersManagement />} />
           <Route path="/admin/reports" element={placeholder('Reports')} />

@@ -9,6 +9,12 @@ function StatusChip({ status }) {
   if (norm === 'active' || norm === 'confirmed') {
     color = 'success'
     variant = 'filled'
+  } else if (norm === 'waiting' || norm === 'called') {
+    color = 'info'
+    variant = 'filled'
+  } else if (norm === 'checked_in') {
+    color = 'primary'
+    variant = 'filled'
   } else if (norm === 'pending') {
     color = 'warning'
     variant = 'filled'

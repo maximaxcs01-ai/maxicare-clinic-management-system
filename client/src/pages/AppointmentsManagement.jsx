@@ -2,7 +2,9 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import EventRepeatOutlinedIcon from '@mui/icons-material/EventRepeatOutlined'
+import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import QueueOutlinedIcon from '@mui/icons-material/QueueOutlined'
 import {
   Alert,
   Box,
@@ -38,6 +40,8 @@ import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
 import {
   confirmAppointment,
+  checkInAppointment,
+  addAppointmentToQueue,
   getAppointments,
   rejectAppointment,
   rescheduleAppointment,
@@ -104,6 +108,7 @@ function AppointmentsManagement() {
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const [notice, setNotice] = useState(null)
+  const [queueActionId, setQueueActionId] = useState('')
 
   // Confirm appointment modal
   const [confirmDialog, setConfirmDialog] = useState({
@@ -206,6 +211,36 @@ function AppointmentsManagement() {
           err.response?.data?.message || 'Unable to confirm appointment.',
       })
       setConfirmDialog((p) => ({ ...p, loading: false }))
+    }
+  }
+
+  const handleAppointmentQueueAction = async (appointment, action) => {
+    setQueueActionId(appointment._id)
+    try {
+      const response =
+        action === 'check-in'
+          ? await checkInAppointment(appointment._id)
+          : await addAppointmentToQueue(appointment._id)
+      setNotice({
+        severity: 'success',
+        message:
+          response.data.message ||
+          (action === 'check-in'
+            ? 'Appointment checked in successfully.'
+            : 'Patient added to the queue.'),
+      })
+      setRefreshKey((current) => current + 1)
+    } catch (err) {
+      setNotice({
+        severity: 'error',
+        message:
+          err.response?.data?.message ||
+          (action === 'check-in'
+            ? 'Unable to check in this appointment.'
+            : 'Unable to add this patient to the queue.'),
+      })
+    } finally {
+      setQueueActionId('')
     }
   }
 
@@ -431,6 +466,8 @@ function AppointmentsManagement() {
             <MenuItem value="">All Statuses</MenuItem>
             <MenuItem value="pending">Pending</MenuItem>
             <MenuItem value="confirmed">Confirmed</MenuItem>
+            <MenuItem value="checked_in">Checked In</MenuItem>
+            <MenuItem value="waiting">Waiting</MenuItem>
             <MenuItem value="cancelled">Cancelled</MenuItem>
             <MenuItem value="rejected">Rejected</MenuItem>
           </Select>
@@ -489,6 +526,18 @@ function AppointmentsManagement() {
                   const isPending = row.status === 'pending'
                   const isConfirmed = row.status === 'confirmed'
                   const canReschedule = isPending || isConfirmed
+                  const isScheduled = row.bookingType === 'scheduled'
+                  const canCheckIn =
+                    isScheduled &&
+                    isConfirmed &&
+                    new Intl.DateTimeFormat('en-CA', {
+                      timeZone: 'Asia/Manila',
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                    }).format(new Date(row.startAt)) === todayStr
+                  const canAddToQueue =
+                    isScheduled && row.status === 'checked_in'
 
                   return (
                     <TableRow key={row._id} hover>
@@ -574,6 +623,44 @@ function AppointmentsManagement() {
                               >
                                 <EventRepeatOutlinedIcon fontSize="small" />
                               </IconButton>
+                            </Tooltip>
+                          )}
+                          {canCheckIn && (
+                            <Tooltip title="Check in patient">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  disabled={Boolean(queueActionId)}
+                                  onClick={() =>
+                                    handleAppointmentQueueAction(
+                                      row,
+                                      'check-in',
+                                    )
+                                  }
+                                >
+                                  <HowToRegOutlinedIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          )}
+                          {canAddToQueue && (
+                            <Tooltip title="Add checked-in patient to queue">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  color="success"
+                                  disabled={Boolean(queueActionId)}
+                                  onClick={() =>
+                                    handleAppointmentQueueAction(
+                                      row,
+                                      'queue',
+                                    )
+                                  }
+                                >
+                                  <QueueOutlinedIcon fontSize="small" />
+                                </IconButton>
+                              </span>
                             </Tooltip>
                           )}
                           <Tooltip title="View Details & Audit Log">

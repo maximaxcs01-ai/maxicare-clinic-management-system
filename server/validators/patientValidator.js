@@ -82,4 +82,44 @@ const validateOwnPatient = (req, res, next) => {
   next();
 };
 
-module.exports = { validatePatient, validateOwnPatient };
+const validateWalkInPatient = (body = {}) => {
+  const firstName = clean(body.firstName);
+  const middleName = clean(body.middleName);
+  const lastName = clean(body.lastName);
+  const email = clean(body.email).toLowerCase();
+  const mobileNumber = clean(body.mobileNumber || body.contactNumber);
+
+  const data = {
+    firstName,
+    middleName,
+    lastName,
+    email,
+    portalStatus: "not_activated",
+  };
+  if (mobileNumber) {
+    data.mobileNumber = mobileNumber;
+    data.contactNumber = mobileNumber;
+  }
+
+  const nameError = validateNames(data);
+  if (nameError) return { error: nameError };
+  if (!emailPattern.test(email)) return { error: "Please enter a valid email address" };
+  if (mobileNumber && !mobilePattern.test(mobileNumber)) {
+    return { error: "Mobile number must be 11 digits and start with 09" };
+  }
+  return { data };
+};
+
+const validateWalkInPatientBody = (req, res, next) => {
+  const result = validateWalkInPatient(req.body);
+  if (result.error) return res.status(400).json({ message: result.error });
+  req.validatedWalkInPatient = result.data;
+  next();
+};
+
+module.exports = {
+  validatePatient,
+  validateOwnPatient,
+  validateWalkInPatient,
+  validateWalkInPatientBody,
+};
