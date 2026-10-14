@@ -24,7 +24,14 @@ const queueEntrySchema = new mongoose.Schema(
     },
     queueStatus: {
       type: String,
-      enum: ["waiting", "called", "removed", "expired"],
+      enum: [
+        "waiting",
+        "called",
+        "in_consultation",
+        "completed",
+        "removed",
+        "expired",
+      ],
       default: "waiting",
       required: true,
     },

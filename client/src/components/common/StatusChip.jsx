@@ -9,7 +9,12 @@ function StatusChip({ status }) {
   if (norm === 'active' || norm === 'confirmed') {
     color = 'success'
     variant = 'filled'
-  } else if (norm === 'waiting' || norm === 'called') {
+  } else if (
+    norm === 'waiting' ||
+    norm === 'called' ||
+    norm === 'in_progress' ||
+    norm === 'in_consultation'
+  ) {
     color = 'info'
     variant = 'filled'
   } else if (norm === 'checked_in') {

@@ -32,3 +32,12 @@ export const callNextQueueEntry = (doctorId) =>
 export const returnQueueEntry = (id) => api.patch(`/queue/${id}/return`)
 export const removeQueueEntry = (id, reason) =>
   api.patch(`/queue/${id}/remove`, { reason })
+export const startConsultation = (queueEntryId) =>
+  api.post(`/consultations/queue/${queueEntryId}/start`)
+export const getConsultations = (params) =>
+  api.get('/consultations', { params })
+export const getConsultation = (id) => api.get(`/consultations/${id}`)
+export const saveConsultationDraft = (id, data) =>
+  api.patch(`/consultations/${id}`, data)
+export const completeConsultation = (id, data) =>
+  api.post(`/consultations/${id}/complete`, data)

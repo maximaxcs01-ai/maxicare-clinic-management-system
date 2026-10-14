@@ -24,6 +24,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
 import useAuth from '../hooks/useAuth'
@@ -33,6 +34,7 @@ import {
   getQueue,
   removeQueueEntry,
   returnQueueEntry,
+  startConsultation,
 } from '../services/appointmentApi'
 
 const formatTime = (value) =>
@@ -44,6 +46,7 @@ const formatTime = (value) =>
 
 function QueueManagement() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const isDoctor = user?.role === 'doctor'
   const [rows, setRows] = useState([])
   const [queueDate, setQueueDate] = useState('')
@@ -143,6 +146,22 @@ function QueueManagement() {
     }
   }
 
+  const handleStartConsultation = async (entry) => {
+    setBusyKey(entry._id)
+    try {
+      const response = await startConsultation(entry._id)
+      navigate(`/doctor/consultations/${response.data.data._id}`)
+    } catch (error) {
+      setNotice({
+        severity: 'error',
+        message:
+          error.response?.data?.message ||
+          'Unable to start this consultation.',
+      })
+      setBusyKey('')
+    }
+  }
+
   return (
     <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
       <Stack
@@ -183,14 +202,14 @@ function QueueManagement() {
                 <TableCell>Service</TableCell>
                 <TableCell>Arrived</TableCell>
                 <TableCell>Status</TableCell>
-                {!isDoctor && <TableCell align="right">Actions</TableCell>}
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               <TableState
                 loading={loading}
                 empty={!rows.length}
-                colSpan={isDoctor ? 5 : 7}
+                colSpan={isDoctor ? 6 : 7}
                 emptyMessage="No active patients in the queue today."
               />
               {!loading &&
@@ -230,8 +249,21 @@ function QueueManagement() {
                       <TableCell>
                         <StatusChip status={entry.queueStatus} />
                       </TableCell>
-                      {!isDoctor && (
-                        <TableCell align="right">
+                      <TableCell align="right">
+                        {isDoctor ? (
+                          entry.queueStatus === 'called' && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              disabled={Boolean(busyKey)}
+                              onClick={() => handleStartConsultation(entry)}
+                            >
+                              {busyKey === entry._id
+                                ? 'Starting…'
+                                : 'Start Consultation'}
+                            </Button>
+                          )
+                        ) : (
                           <Stack
                             direction="row"
                             spacing={0.5}
@@ -293,8 +325,8 @@ function QueueManagement() {
                               </IconButton>
                             </Tooltip>
                           </Stack>
-                        </TableCell>
-                      )}
+                        )}
+                      </TableCell>
                     </TableRow>
                   )
                 })}
