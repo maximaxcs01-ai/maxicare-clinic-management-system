@@ -38,6 +38,7 @@ import { useEffect, useState } from 'react'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
+import useAuth from '../hooks/useAuth'
 import {
   confirmAppointment,
   checkInAppointment,
@@ -99,6 +100,7 @@ const formatSlotTime = (timeStr) =>
   }).format(new Date(`2020-01-01T${timeStr}:00+08:00`))
 
 function AppointmentsManagement() {
+  const { user } = useAuth()
   const [rows, setRows] = useState([])
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
   const [page, setPage] = useState(1)
@@ -410,9 +412,10 @@ function AppointmentsManagement() {
   }
 
   return (
-    <Box component="section" sx={{ minWidth: 0 }}>
+    <Box component="section" className={user?.role === 'receptionist' ? 'receptionist-page' : undefined} sx={{ minWidth: 0 }}>
       {/* Responsive Header */}
       <Box
+        className={user?.role === 'receptionist' ? 'receptionist-page-header' : undefined}
         sx={{
           display: 'grid',
           gridTemplateColumns: {
@@ -427,13 +430,14 @@ function AppointmentsManagement() {
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="h4">Appointments</Typography>
           <Typography color="text.secondary">
-            Manage clinic appointments and booking requests.
+            Manage and view clinic appointments.
           </Typography>
         </Box>
       </Box>
 
       {/* Filters */}
       <Paper
+        className={user?.role === 'receptionist' ? 'receptionist-filter-panel' : undefined}
         sx={{
           p: 2,
           mb: 3,
@@ -481,7 +485,7 @@ function AppointmentsManagement() {
             setDate(e.target.value)
             setPage(1)
           }}
-          InputLabelProps={{ shrink: true }}
+          slotProps={{ inputLabel: { shrink: true } }}
           sx={{ minWidth: 170 }}
         />
         {(search || status || date) && (
@@ -501,7 +505,7 @@ function AppointmentsManagement() {
       </Paper>
 
       {/* Appointments Table */}
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <Paper className={user?.role === 'receptionist' ? 'receptionist-management-panel' : undefined} sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer>
           <Table>
             <TableHead>
@@ -590,7 +594,7 @@ function AppointmentsManagement() {
                         <Stack
                           direction="row"
                           spacing={0.5}
-                          justifyContent="flex-end"
+                          sx={{ justifyContent: 'flex-end' }}
                         >
                           {isPending && (
                             <>
@@ -684,9 +688,7 @@ function AppointmentsManagement() {
 
         <Stack
           direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{ p: 2 }}
+          sx={{ p: 2, justifyContent: 'space-between', alignItems: 'center' }}
         >
           <Typography variant="body2" color="text.secondary">
             {pagination.total} appointment(s)
@@ -868,7 +870,7 @@ function AppointmentsManagement() {
                     min: todayStr,
                     max: addDays(todayStr, 60),
                   }}
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                   fullWidth
                 />
 
@@ -1105,8 +1107,10 @@ function AppointmentsManagement() {
                         >
                           <Stack
                             direction="row"
-                            justifyContent="space-between"
-                            alignItems="center"
+                            sx={{
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                            }}
                           >
                             <StatusChip status={item.status} />
                             <Typography

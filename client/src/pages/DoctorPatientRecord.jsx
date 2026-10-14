@@ -1,6 +1,7 @@
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined'
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -20,6 +21,22 @@ const formatDateTime = (value) =>
     timeStyle: 'short',
     timeZone: 'Asia/Manila',
   }).format(new Date(value))
+
+const getAge = (dateOfBirth) => {
+  if (!dateOfBirth) return null
+  const birthDate = new Date(dateOfBirth)
+  if (Number.isNaN(birthDate.getTime())) return null
+  const today = new Date()
+  let age = today.getFullYear() - birthDate.getFullYear()
+  const monthDifference = today.getMonth() - birthDate.getMonth()
+  if (
+    monthDifference < 0 ||
+    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age -= 1
+  }
+  return age
+}
 
 function DoctorPatientRecord() {
   const { patientId } = useParams()
@@ -85,6 +102,7 @@ function DoctorPatientRecord() {
   }
 
   const { patient, consultations, prescriptions } = currentRecord
+  const patientAge = getAge(patient.dateOfBirth)
   const prescriptionsByConsultation = new Map(
     prescriptions.map((prescription) => [
       String(prescription.consultationId?._id || prescription.consultationId),
@@ -93,20 +111,33 @@ function DoctorPatientRecord() {
   )
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
+    <Box component="section" className="doctor-page doctor-patient-record" sx={{ width: '100%', minWidth: 0 }}>
       <Stack
+        className="doctor-page-header"
         direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'stretch', sm: 'center' }}
         spacing={2}
-        sx={{ mb: 3 }}
+        sx={{
+          mb: 3,
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+        }}
       >
-        <Box>
-          <Typography variant="h4">Patient Record</Typography>
-          <Typography color="text.secondary">
-            {patient.firstName} {patient.middleName} {patient.lastName}
-          </Typography>
-        </Box>
+        <Stack direction="row" spacing={1.75} sx={{ alignItems: 'center' }}>
+          <Avatar className="doctor-record-avatar">
+            {patient.firstName?.[0]}
+            {patient.lastName?.[0]}
+          </Avatar>
+          <Box>
+            <Typography variant="h4">
+              {patient.firstName} {patient.middleName} {patient.lastName}
+            </Typography>
+            <Typography color="text.secondary">
+              Patient {patient.patientNumber || 'record'} ·{' '}
+              {patientAge === null ? 'Age not recorded' : `${patientAge} years`} ·{' '}
+              {patient.sex || patient.gender || 'Sex not recorded'}
+            </Typography>
+          </Box>
+        </Stack>
         <Button
           startIcon={<ArrowBackOutlinedIcon />}
           onClick={() => navigate('/doctor/patients')}
@@ -173,10 +204,12 @@ function DoctorPatientRecord() {
                   >
                     <Stack
                       direction={{ xs: 'column', sm: 'row' }}
-                      justifyContent="space-between"
-                      alignItems={{ xs: 'flex-start', sm: 'center' }}
                       spacing={1}
-                      sx={{ mb: 2 }}
+                      sx={{
+                        mb: 2,
+                        justifyContent: 'space-between',
+                        alignItems: { xs: 'flex-start', sm: 'center' },
+                      }}
                     >
                       <Box>
                         <Typography variant="h6">
@@ -222,8 +255,7 @@ function DoctorPatientRecord() {
                           <Stack
                             direction="row"
                             spacing={1}
-                            alignItems="center"
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, alignItems: 'center' }}
                           >
                             <Typography fontWeight={700}>
                               Issued prescription

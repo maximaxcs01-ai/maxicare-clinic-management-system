@@ -1,13 +1,49 @@
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material'
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material'
 
 function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', loading, onCancel, onConfirm }) {
+  const destructive = /delete|remove|archive|deactivate/i.test(`${title} ${confirmLabel}`)
+
   return (
-    <Dialog open={open} onClose={loading ? undefined : onCancel} maxWidth="xs" fullWidth>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent><DialogContentText>{message}</DialogContentText></DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2.5 }}>
-        <Button onClick={onCancel} disabled={loading}>Cancel</Button>
-        <Button color="error" variant="contained" onClick={onConfirm} disabled={loading}>
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onCancel}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: '14px', p: 0.5 } }}
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pt: 3 }}>
+        <Box
+          component="span"
+          sx={{
+            width: 40,
+            height: 40,
+            display: 'grid',
+            flex: '0 0 auto',
+            placeItems: 'center',
+            borderRadius: '50%',
+            color: destructive ? 'error.main' : 'primary.main',
+            bgcolor: destructive ? '#fff1f0' : '#edf4fb',
+          }}
+        >
+          <ReportProblemOutlinedIcon />
+        </Box>
+        {title}
+      </DialogTitle>
+      <DialogContent sx={{ pl: 8.5 }}>
+        <DialogContentText sx={{ color: 'text.secondary', lineHeight: 1.65 }}>
+          {message}
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
+        <Button variant="outlined" onClick={onCancel} disabled={loading}>Cancel</Button>
+        <Button
+          color={destructive ? 'error' : 'primary'}
+          variant="contained"
+          onClick={onConfirm}
+          disabled={loading}
+          sx={{ borderRadius: '10px', minWidth: 96 }}
+        >
           {loading ? 'Please wait...' : confirmLabel}
         </Button>
       </DialogActions>

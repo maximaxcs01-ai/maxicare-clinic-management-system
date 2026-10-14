@@ -1,5 +1,10 @@
+import ArrowForwardOutlinedIcon from '@mui/icons-material/ArrowForwardOutlined'
+import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
+import HistoryEduOutlinedIcon from '@mui/icons-material/HistoryEduOutlined'
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -8,12 +13,23 @@ import {
   Grid,
   Paper,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import StatusChip from '../components/common/StatusChip'
 import useAuth from '../hooks/useAuth'
+import {
+  getMyQueue,
+  getQueue,
+  startConsultation,
+} from '../services/appointmentApi'
 import { getDashboard } from '../services/dashboardApi'
 
 const roleCopy = {
@@ -30,7 +46,339 @@ const formatDateTime = (value) =>
     timeZone: 'Asia/Manila',
   }).format(new Date(value))
 
-function MetricCard({ title, value, subtitle, to }) {
+const formatTime = (value) =>
+  new Intl.DateTimeFormat('en-PH', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'Asia/Manila',
+  }).format(new Date(value))
+
+const manilaDateKey = (value) =>
+  new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Manila',
+  }).format(new Date(value))
+
+const getGreeting = () => {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-PH', {
+      hour: '2-digit',
+      hourCycle: 'h23',
+      timeZone: 'Asia/Manila',
+    }).format(new Date()),
+  )
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+const patientActions = [
+  { label: 'Book Appointment', caption: 'Choose a service and available schedule.', to: '/patient/appointments/book', icon: CalendarMonthOutlinedIcon },
+  { label: 'Medical History', caption: 'Review your completed consultations.', to: '/patient/medical-history', icon: HistoryEduOutlinedIcon },
+  { label: 'Prescriptions', caption: 'View prescriptions issued by your doctors.', to: '/patient/prescriptions', icon: ReceiptLongOutlinedIcon },
+]
+
+function PatientDashboard({ user, dashboard, loading, error }) {
+  const appointment = dashboard?.nextAppointment
+
+  return (
+    <Box component="section" className="patient-page patient-dashboard">
+      <Box className="patient-dashboard-heading">
+        <Typography component="h1" variant="h4">
+          {getGreeting()}, {user?.firstName || 'there'} <span aria-hidden="true">👋</span>
+        </Typography>
+        <Typography color="text.secondary">
+          Here is an overview of your upcoming care and health records.
+        </Typography>
+      </Box>
+
+      {error && <Alert severity="error">{error}</Alert>}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <Paper className="patient-next-appointment">
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              gap={3}
+              sx={{
+                justifyContent: 'space-between',
+                alignItems: { xs: 'stretch', md: 'center' },
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <Typography className="patient-card-eyebrow">Next Appointment</Typography>
+                {appointment ? (
+                  <>
+                    <Typography variant="h5" fontWeight={700}>
+                      {appointment.serviceId?.name || 'Clinic Appointment'}
+                    </Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                      {appointment.doctorId
+                        ? `Dr. ${appointment.doctorId.firstName} ${appointment.doctorId.lastName}`
+                        : 'Doctor to be confirmed'}
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="h5" fontWeight={700}>No upcoming appointment</Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                      Book a visit when you are ready.
+                    </Typography>
+                  </>
+                )}
+              </Box>
+              {appointment && (
+                <Stack className="patient-appointment-meta" spacing={1}>
+                  <Typography fontWeight={700}>{formatDateTime(appointment.startAt)}</Typography>
+                  <StatusChip status={appointment.status} />
+                </Stack>
+              )}
+              <Button
+                component={RouterLink}
+                to={appointment ? '/patient/appointments' : '/patient/appointments/book'}
+                variant={appointment ? 'outlined' : 'contained'}
+                endIcon={<ArrowForwardOutlinedIcon />}
+              >
+                {appointment ? 'View Details' : 'Book Appointment'}
+              </Button>
+            </Stack>
+          </Paper>
+
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>Quick Actions</Typography>
+            <Grid container spacing={2}>
+              {patientActions.map(({ label, caption, to, icon: Icon }) => (
+                <Grid key={to} size={{ xs: 12, sm: 4 }}>
+                  <Paper component={RouterLink} to={to} className="patient-quick-action">
+                    <span className="patient-quick-action-icon"><Icon /></span>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography fontWeight={700}>{label}</Typography>
+                      <Typography variant="body2" color="text.secondary">{caption}</Typography>
+                    </Box>
+                    <ArrowForwardOutlinedIcon className="patient-action-arrow" />
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+
+          <Paper className="patient-brand-message">
+            <Typography variant="overline">Maxicare Clinic</Typography>
+            <Typography variant="h5">Living your best life</Typography>
+            <Typography>
+              Your appointments, clinical records, and prescriptions are available in one secure place.
+            </Typography>
+          </Paper>
+        </>
+      )}
+    </Box>
+  )
+}
+
+function DoctorDashboard({ user, dashboard, loading, error }) {
+  const navigate = useNavigate()
+  const [queue, setQueue] = useState([])
+  const [queueLoading, setQueueLoading] = useState(true)
+  const [queueError, setQueueError] = useState('')
+  const [starting, setStarting] = useState(false)
+  const activeConsultation = dashboard?.activeConsultation
+  const upcomingAppointments = dashboard?.upcomingAppointments || []
+  const nextAppointment = upcomingAppointments[0]
+  const todayKey = manilaDateKey(new Date())
+  const todayAppointments = upcomingAppointments.filter(
+    (appointment) => manilaDateKey(appointment.startAt) === todayKey,
+  )
+  const nextQueueEntry =
+    queue.find((entry) => entry.queueStatus === 'called') || queue[0]
+  const patient = activeConsultation?.patientId || nextQueueEntry?.patientId
+  const patientInitials = `${patient?.firstName?.[0] || ''}${patient?.lastName?.[0] || ''}`
+
+  useEffect(() => {
+    let active = true
+    getMyQueue()
+      .then((response) => {
+        if (!active) return
+        setQueue(response.data.data || [])
+        setQueueError('')
+      })
+      .catch((requestError) => {
+        if (!active) return
+        setQueueError(
+          requestError.response?.data?.message || 'Unable to load your queue.',
+        )
+      })
+      .finally(() => {
+        if (active) setQueueLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const handleStartConsultation = async () => {
+    setStarting(true)
+    setQueueError('')
+    try {
+      const response = await startConsultation(nextQueueEntry._id)
+      navigate(`/doctor/consultations/${response.data.data._id}`)
+    } catch (requestError) {
+      setQueueError(
+        requestError.response?.data?.message ||
+          'Unable to start this consultation.',
+      )
+      setStarting(false)
+    }
+  }
+
+  return (
+    <Box component="section" className="doctor-page doctor-dashboard">
+      <Box className="doctor-page-header">
+        <Box>
+          <Typography color="text.secondary" fontWeight={600}>{getGreeting()},</Typography>
+          <Typography component="h1" variant="h4">
+            Dr. {user?.firstName || 'Doctor'}
+          </Typography>
+          <Typography color="text.secondary">
+            Today&apos;s appointments and clinical workload.
+          </Typography>
+        </Box>
+      </Box>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+      ) : (
+        <>
+          <Box className="doctor-metric-grid">
+            {[
+              ["Today's Appointments", dashboard?.todayAppointments],
+              ['Waiting Now', dashboard?.waitingCalledQueueCount],
+              ['Completed Today', dashboard?.completedConsultationsToday],
+              ['Next Appointment', nextAppointment ? formatDateTime(nextAppointment.startAt) : 'None'],
+            ].map(([title, value]) => (
+              <Paper key={title} className="doctor-metric-card">
+                  <Typography variant="body2" color="text.secondary">{title}</Typography>
+                  <Typography variant="h5" fontWeight={750}>{value ?? '—'}</Typography>
+              </Paper>
+            ))}
+          </Box>
+
+          <Box className="doctor-dashboard-grid">
+            <Paper className="doctor-dashboard-panel doctor-current-patient">
+              <Typography variant="h6">
+                {activeConsultation ? 'Current Patient' : 'Next Patient'}
+              </Typography>
+              {activeConsultation ? (
+                <Stack direction="row" spacing={2} sx={{ mt: 2.5, alignItems: 'center' }}>
+                  <Avatar className="doctor-patient-avatar">{patientInitials || 'P'}</Avatar>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography fontWeight={750}>
+                      {patient ? `${patient.firstName} ${patient.lastName}` : 'Patient unavailable'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {patient?.patientNumber || 'Patient number unavailable'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      {activeConsultation.serviceId?.name || 'Consultation'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    component={RouterLink}
+                    to={`/doctor/consultations/${activeConsultation._id}`}
+                    variant="contained"
+                    endIcon={<ArrowForwardOutlinedIcon />}
+                  >
+                    Continue
+                  </Button>
+                </Stack>
+              ) : nextQueueEntry ? (
+                <Stack direction="row" spacing={2} sx={{ mt: 2.5, alignItems: 'center' }}>
+                  <Avatar className="doctor-patient-avatar">{patientInitials || 'P'}</Avatar>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography fontWeight={750}>
+                      {patient ? `${patient.firstName} ${patient.lastName}` : 'Patient unavailable'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {patient?.patientNumber || 'Patient number unavailable'} ·{' '}
+                      {nextQueueEntry.serviceId?.name || 'Service unavailable'}
+                    </Typography>
+                    <Stack direction="row" spacing={1} sx={{ mt: 1, alignItems: 'center' }}>
+                      <Typography variant="body2">
+                        Joined {formatTime(nextQueueEntry.joinedAt)}
+                      </Typography>
+                      <StatusChip status={nextQueueEntry.queueStatus} />
+                    </Stack>
+                  </Box>
+                  {nextQueueEntry.queueStatus === 'called' ? (
+                    <Button
+                      variant="contained"
+                      disabled={starting}
+                      onClick={handleStartConsultation}
+                      endIcon={<ArrowForwardOutlinedIcon />}
+                    >
+                      {starting ? 'Starting…' : 'Start Consultation'}
+                    </Button>
+                  ) : (
+                    <Button component={RouterLink} to="/doctor/queue" variant="outlined">
+                      View Queue
+                    </Button>
+                  )}
+                </Stack>
+              ) : (
+                <Box className="doctor-empty-state">
+                  <Typography fontWeight={650}>
+                    {queueLoading ? 'Loading your queue…' : 'No patient is waiting'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {queueError || 'Your assigned queue is currently clear.'}
+                  </Typography>
+                </Box>
+              )}
+              {queueError && nextQueueEntry && (
+                <Alert severity="error" sx={{ mt: 2 }}>{queueError}</Alert>
+              )}
+            </Paper>
+
+            <Paper className="doctor-dashboard-panel">
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6">Today&apos;s Remaining Schedule</Typography>
+                <Button component={RouterLink} to="/doctor/appointments" size="small">View all</Button>
+              </Stack>
+              {todayAppointments.length ? (
+                <Stack className="doctor-schedule-list" divider={<Box className="doctor-list-divider" />}>
+                  {todayAppointments.map((appointment) => (
+                    <Stack key={appointment._id} direction="row" gap={2} sx={{ justifyContent: 'space-between' }}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography fontWeight={650}>
+                          {appointment.patientId
+                            ? `${appointment.patientId.firstName} ${appointment.patientId.lastName}`
+                            : 'Patient unavailable'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {formatDateTime(appointment.startAt)} · {appointment.serviceId?.name || 'Service'}
+                        </Typography>
+                      </Box>
+                      <StatusChip status={appointment.status} />
+                    </Stack>
+                  ))}
+                </Stack>
+              ) : (
+                <Box className="doctor-empty-state"><Typography color="text.secondary">No remaining appointments today.</Typography></Box>
+              )}
+            </Paper>
+          </Box>
+        </>
+      )}
+    </Box>
+  )
+}
+
+function MetricCard({ title, value, subtitle, to, gridItem = true }) {
   const content = (
     <Card
       sx={{
@@ -56,16 +404,236 @@ function MetricCard({ title, value, subtitle, to }) {
       </CardContent>
     </Card>
   )
-  return (
+  const card = (
+    to ? (
+      <Box component={RouterLink} to={to} sx={{ display: 'block', height: '100%', textDecoration: 'none' }}>
+        {content}
+      </Box>
+    ) : content
+  )
+
+  return gridItem ? (
     <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-      {to ? (
-        <Box component={RouterLink} to={to} sx={{ textDecoration: 'none' }}>
-          {content}
+      {card}
+    </Grid>
+  ) : card
+}
+
+function ReceptionistDashboard({ user, dashboard, loading, error }) {
+  const [queue, setQueue] = useState([])
+  const [queueLoading, setQueueLoading] = useState(true)
+  const [queueError, setQueueError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    getQueue()
+      .then((response) => {
+        if (active) {
+          setQueue(response.data.data || [])
+          setQueueError('')
+        }
+      })
+      .catch((requestError) => {
+        if (active) {
+          setQueueError(
+            requestError.response?.data?.message ||
+              'Unable to load today’s queue.',
+          )
+        }
+      })
+      .finally(() => {
+        if (active) setQueueLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const statusCounts = dashboard?.today?.statusCounts || {}
+  const waitingCount = queue.filter(
+    (entry) => entry.queueStatus === 'waiting',
+  ).length
+  const activeQueueCount = dashboard?.activeQueueCount
+  const dashboardStatusValue = (status) =>
+    dashboard ? statusCounts[status] ?? 0 : '—'
+
+  return (
+    <Box
+      component="section"
+      className="receptionist-page receptionist-dashboard"
+    >
+      <Box className="receptionist-page-header receptionist-dashboard-header">
+        <Box>
+          <Typography component="h1" variant="h4">
+            {getGreeting()}, {user?.firstName || 'there'}!
+          </Typography>
+          <Typography color="text.secondary">
+            Today’s clinic operations at a glance.
+          </Typography>
+        </Box>
+        <Button
+          component={RouterLink}
+          to="/receptionist/walk-ins"
+          variant="contained"
+        >
+          Walk-In Patient
+        </Button>
+      </Box>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
         </Box>
       ) : (
-        content
+        <>
+          <Box className="receptionist-summary-grid">
+              <MetricCard
+                title="Today’s Appointments"
+                value={dashboard?.today?.appointments ?? '—'}
+                to="/receptionist/appointments"
+                gridItem={false}
+              />
+              <MetricCard
+                title="Walk-Ins Today"
+                value={dashboard?.walkInsToday ?? '—'}
+                to="/receptionist/walk-ins"
+                gridItem={false}
+              />
+              <MetricCard
+                title="Waiting"
+                value={queueLoading || queueError ? '—' : waitingCount}
+                to="/receptionist/queue"
+                gridItem={false}
+              />
+              <MetricCard
+                title="Active Queue"
+                value={activeQueueCount ?? '—'}
+                to="/receptionist/queue"
+                gridItem={false}
+              />
+          </Box>
+
+          <Paper className="receptionist-status-summary" sx={{ mt: 2 }}>
+            {[
+              ['Pending', dashboardStatusValue('pending')],
+              ['Confirmed', dashboardStatusValue('confirmed')],
+              ['Checked In', dashboardStatusValue('checked_in')],
+              ['In Consultation', dashboardStatusValue('in_consultation')],
+            ].map(([label, count]) => (
+              <Box key={label} className="receptionist-status-summary-item">
+                <Typography variant="body2" color="text.secondary">
+                  {label}
+                </Typography>
+                <Typography fontWeight={700}>{count ?? 0}</Typography>
+              </Box>
+            ))}
+          </Paper>
+
+          <Paper className="receptionist-management-panel receptionist-queue-preview" sx={{ mt: 3 }}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.5}
+              sx={{
+                p: 2.5,
+                pb: 2,
+                justifyContent: 'space-between',
+                alignItems: { xs: 'stretch', sm: 'center' },
+              }}
+            >
+              <Box>
+                <Typography variant="h6">Today’s Queue</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {queueLoading
+                    ? 'Loading queue…'
+                    : queueError
+                    ? 'Queue information is unavailable.'
+                    : `${queue.length} active queue ${queue.length === 1 ? 'entry' : 'entries'}`}
+                </Typography>
+              </Box>
+              <Button component={RouterLink} to="/receptionist/queue">
+                View Queue
+              </Button>
+            </Stack>
+            {queueError && <Alert severity="error" sx={{ mx: 2.5, mb: 2 }}>{queueError}</Alert>}
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Position</TableCell>
+                    <TableCell>Patient</TableCell>
+                    <TableCell>Doctor</TableCell>
+                    <TableCell>Service</TableCell>
+                    <TableCell>Joined</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {queueLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                        <CircularProgress size={24} />
+                      </TableCell>
+                    </TableRow>
+                  ) : queueError ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                        <Typography color="text.secondary">
+                          Queue information could not be loaded.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : queue.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                        <Typography color="text.secondary">
+                          No active queue entries right now.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    queue.map((entry) => (
+                      <TableRow key={entry._id} hover>
+                        <TableCell>{entry.queuePosition}</TableCell>
+                        <TableCell>
+                          {entry.patientId
+                            ? `${entry.patientId.firstName} ${entry.patientId.lastName}`
+                            : 'Patient profile'}
+                        </TableCell>
+                        <TableCell>
+                          {entry.doctorId
+                            ? `Dr. ${entry.doctorId.firstName} ${entry.doctorId.lastName}`
+                            : '—'}
+                        </TableCell>
+                        <TableCell>{entry.serviceId?.name || '—'}</TableCell>
+                        <TableCell>{formatDateTime(entry.joinedAt)}</TableCell>
+                        <TableCell><StatusChip status={entry.queueStatus} /></TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            className="receptionist-quick-links"
+          >
+            <Button component={RouterLink} to="/receptionist/appointments" variant="outlined">
+              Appointments
+            </Button>
+            <Button component={RouterLink} to="/receptionist/walk-ins" variant="outlined">
+              Walk-Ins
+            </Button>
+            <Button component={RouterLink} to="/receptionist/queue" variant="outlined">
+              Queue
+            </Button>
+          </Stack>
+        </>
       )}
-    </Grid>
+    </Box>
   )
 }
 
@@ -79,7 +647,10 @@ function RoleDashboard() {
     let active = true
     getDashboard()
       .then((response) => {
-        if (active) setDashboard(response.data.data)
+        if (active) {
+          setDashboard(response.data.data)
+          setError('')
+        }
       })
       .catch((requestError) => {
         if (active) {
@@ -192,6 +763,39 @@ function RoleDashboard() {
     ]
   }
 
+  if (role === 'patient') {
+    return (
+      <PatientDashboard
+        user={user}
+        dashboard={dashboard}
+        loading={loading}
+        error={error}
+      />
+    )
+  }
+
+  if (role === 'doctor') {
+    return (
+      <DoctorDashboard
+        user={user}
+        dashboard={dashboard}
+        loading={loading}
+        error={error}
+      />
+    )
+  }
+
+  if (role === 'receptionist') {
+    return (
+      <ReceptionistDashboard
+        user={user}
+        dashboard={dashboard}
+        loading={loading}
+        error={error}
+      />
+    )
+  }
+
   return (
     <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
       <Typography component="h1" variant="h4">
@@ -216,7 +820,7 @@ function RoleDashboard() {
 
           {role === 'patient' && dashboard?.nextAppointment && (
             <Paper sx={{ p: 2.5, mt: 3 }}>
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                 <Typography fontWeight={700}>Next visit status</Typography>
                 <StatusChip status={dashboard.nextAppointment.status} />
               </Stack>
@@ -233,9 +837,11 @@ function RoleDashboard() {
                   <Stack
                     key={consultation._id}
                     direction={{ xs: 'column', sm: 'row' }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'flex-start', sm: 'center' }}
                     spacing={1}
+                    sx={{
+                      justifyContent: 'space-between',
+                      alignItems: { xs: 'flex-start', sm: 'center' },
+                    }}
                   >
                     <Box>
                       <Typography fontWeight={600}>
@@ -271,9 +877,11 @@ function RoleDashboard() {
                   <Stack
                     key={appointment._id}
                     direction={{ xs: 'column', sm: 'row' }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'flex-start', sm: 'center' }}
                     spacing={1}
+                    sx={{
+                      justifyContent: 'space-between',
+                      alignItems: { xs: 'flex-start', sm: 'center' },
+                    }}
                   >
                     <Box>
                       <Typography fontWeight={600}>
@@ -284,7 +892,7 @@ function RoleDashboard() {
                         {appointment.serviceId?.name || 'Appointment'}
                       </Typography>
                     </Box>
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                       <Typography variant="body2">
                         {formatDateTime(appointment.startAt)}
                       </Typography>
@@ -304,7 +912,7 @@ function RoleDashboard() {
               <Grid container spacing={1.5}>
                 {Object.entries(adminStatuses || {}).map(([status, count]) => (
                   <Grid key={status} size={{ xs: 6, sm: 4, md: 3 }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                       <StatusChip status={status} />
                       <Typography fontWeight={700}>{count}</Typography>
                     </Stack>

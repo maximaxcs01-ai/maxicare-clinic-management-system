@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import MarkEmailReadOutlinedIcon from '@mui/icons-material/MarkEmailReadOutlined'
+import AuthPage from '../components/AuthPage'
 import OtpInput from '../components/OtpInput'
 import api from '../services/api'
 
@@ -95,32 +97,36 @@ function VerifyResetOtp() {
 
   if (!email) {
     return (
-      <main className="page-shell">
-        <section className="auth-card verify-card">
+      <AuthPage>
+        <div className="auth-heading">
+          <span className="auth-icon-badge"><MarkEmailReadOutlinedIcon /></span>
           <h1>Verify reset code</h1>
+        </div>
           <div className="message error-message">
             Your password reset session is unavailable. Request a new code.
           </div>
           <p className="auth-link">
             <Link to="/forgot-password">Request a reset code</Link>
           </p>
-        </section>
-      </main>
+      </AuthPage>
     )
   }
 
   return (
-    <main className="page-shell">
-      <section className="auth-card verify-card">
-        <h1>Verify reset code</h1>
-        <p className="subtitle">
-          Code sent to: <strong>{maskEmail(email)}</strong>
-        </p>
+    <AuthPage className="auth-verify-panel">
+        <div className="auth-heading">
+          <span className="auth-icon-badge"><MarkEmailReadOutlinedIcon /></span>
+          <h1>Verify your identity</h1>
+          <p className="subtitle">
+            Enter the six-digit code sent to <strong>{maskEmail(email)}</strong>.
+          </p>
+        </div>
 
-        {error && <div className="message error-message">{error}</div>}
-        {message && <div className="message success-message">{message}</div>}
+        {error && <div className="message error-message" role="alert">{error}</div>}
+        {message && <div className="message success-message" role="status">{message}</div>}
 
         <form onSubmit={handleVerify}>
+          <p className="otp-instruction">Your code is valid for a limited time.</p>
           <OtpInput
             digits={digits}
             onChange={setDigits}
@@ -128,7 +134,7 @@ function VerifyResetOtp() {
             label="Password reset digit"
           />
 
-          <button type="submit" disabled={loading || resending}>
+          <button className="auth-submit-button" type="submit" disabled={loading || resending}>
             {loading ? 'Verifying...' : 'Verify Code'}
           </button>
 
@@ -145,8 +151,7 @@ function VerifyResetOtp() {
                 : 'Resend code'}
           </button>
         </form>
-      </section>
-    </main>
+    </AuthPage>
   )
 }
 

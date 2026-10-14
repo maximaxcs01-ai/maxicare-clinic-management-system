@@ -67,15 +67,15 @@ function DoctorPrescriptions() {
   }, [status, page])
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
-      <Stack spacing={0.5} sx={{ mb: 3 }}>
+    <Box component="section" className="doctor-page doctor-prescriptions-page" sx={{ width: '100%', minWidth: 0 }}>
+      <Stack className="doctor-page-header" spacing={0.5} sx={{ mb: 3 }}>
         <Typography variant="h4">Prescriptions</Typography>
         <Typography color="text.secondary">
           Manage prescriptions linked to your consultations.
         </Typography>
       </Stack>
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <Paper className="doctor-management-panel" sx={{ width: '100%', overflow: 'hidden' }}>
         <Tabs
           value={status}
           onChange={(_, value) => {
@@ -154,10 +154,12 @@ function DoctorPrescriptions() {
         </TableContainer>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
-          justifyContent="space-between"
-          alignItems={{ xs: 'stretch', sm: 'center' }}
           spacing={1}
-          sx={{ p: 2 }}
+          sx={{
+            p: 2,
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'center' },
+          }}
         >
           <Typography variant="body2" color="text.secondary">
             {pagination.total} prescription(s)

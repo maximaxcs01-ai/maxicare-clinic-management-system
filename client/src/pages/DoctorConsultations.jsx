@@ -1,6 +1,7 @@
 import {
   Alert,
   Box,
+  Button,
   Pagination,
   Paper,
   Snackbar,
@@ -68,15 +69,15 @@ function DoctorConsultations() {
   }, [status, page])
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
-      <Stack spacing={0.5} sx={{ mb: 3 }}>
+    <Box component="section" className="doctor-page doctor-consultations-page" sx={{ width: '100%', minWidth: 0 }}>
+      <Stack className="doctor-page-header" spacing={0.5} sx={{ mb: 3 }}>
         <Typography variant="h4">Consultations</Typography>
         <Typography color="text.secondary">
           Review and document your active and completed consultations.
         </Typography>
       </Stack>
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <Paper className="doctor-management-panel" sx={{ width: '100%', overflow: 'hidden' }}>
         <Tabs
           value={status}
           onChange={(_, value) => {
@@ -99,13 +100,14 @@ function DoctorConsultations() {
                 <TableCell>Service</TableCell>
                 <TableCell>Started At</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell align="right">Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               <TableState
                 loading={loading}
                 empty={!rows.length}
-                colSpan={5}
+                colSpan={6}
                 emptyMessage={
                   status === 'in_progress'
                     ? 'No active consultations.'
@@ -139,6 +141,18 @@ function DoctorConsultations() {
                     <TableCell>
                       <StatusChip status={consultation.status} />
                     </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          navigate(`/doctor/consultations/${consultation._id}`)
+                        }}
+                      >
+                        {consultation.status === 'in_progress' ? 'Continue' : 'View'}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
             </TableBody>
@@ -146,10 +160,12 @@ function DoctorConsultations() {
         </TableContainer>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
-          justifyContent="space-between"
-          alignItems={{ xs: 'stretch', sm: 'center' }}
           spacing={1}
-          sx={{ p: 2 }}
+          sx={{
+            p: 2,
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'center' },
+          }}
         >
           <Typography variant="body2" color="text.secondary">
             {pagination.total} consultation(s)

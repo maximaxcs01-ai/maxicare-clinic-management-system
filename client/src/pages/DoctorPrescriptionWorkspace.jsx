@@ -175,13 +175,16 @@ function DoctorPrescriptionWorkspace() {
   const consultation = prescription.consultationId
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
+    <Box component="section" className="doctor-page doctor-prescription-workspace" sx={{ width: '100%', minWidth: 0 }}>
       <Stack
+        className="doctor-page-header"
         direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'stretch', sm: 'center' }}
         spacing={2}
-        sx={{ mb: 3 }}
+        sx={{
+          mb: 3,
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+        }}
       >
         <Box>
           <Typography variant="h4">Prescription</Typography>
@@ -192,7 +195,7 @@ function DoctorPrescriptionWorkspace() {
               : ''}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <StatusChip status={prescription.status} />
           <Button onClick={() => navigate('/doctor/prescriptions')}>
             Prescriptions
@@ -279,10 +282,12 @@ function DoctorPrescriptionWorkspace() {
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
-            justifyContent="space-between"
-            alignItems={{ xs: 'stretch', sm: 'center' }}
             spacing={1.5}
-            sx={{ mb: 2 }}
+            sx={{
+              mb: 2,
+              justifyContent: 'space-between',
+              alignItems: { xs: 'stretch', sm: 'center' },
+            }}
           >
             <Typography variant="h6">Medications</Typography>
             {!readOnly && (
@@ -309,9 +314,11 @@ function DoctorPrescriptionWorkspace() {
               >
                 <Stack
                   direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{ mb: 2 }}
+                  sx={{
+                    mb: 2,
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
                 >
                   <Typography fontWeight={600}>
                     Medication {index + 1}
@@ -400,12 +407,13 @@ function DoctorPrescriptionWorkspace() {
 
       {!readOnly && (
         <Stack
+          className="doctor-workspace-actions"
           direction={{ xs: 'column', sm: 'row' }}
-          justifyContent="flex-end"
           spacing={1.5}
-          sx={{ mt: 3 }}
+          sx={{ mt: 3, justifyContent: 'space-between' }}
         >
           <Button
+            variant="outlined"
             disabled={saving}
             onClick={() => persistDraft(false)}
           >

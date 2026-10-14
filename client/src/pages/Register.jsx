@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import AuthPage from '../components/AuthPage'
 import api from '../services/api'
 
 const initialForm = {
@@ -67,8 +68,9 @@ function validateField(name, value, formData) {
   return ''
 }
 
-function FieldError({ message }) {
-  return message ? <p className="field-error">{message}</p> : null
+function FieldFeedback({ message, valid }) {
+  if (message) return <p className="field-error">{message}</p>
+  return valid ? <p className="field-valid">Looks good.</p> : null
 }
 
 function Register() {
@@ -169,16 +171,17 @@ function Register() {
   ]
 
   return (
-    <main className="page-shell">
-      <section className="auth-card register-card">
-        <h1>Create an Account</h1>
-        <p className="subtitle">Register as a clinic patient</p>
+    <AuthPage wide className="auth-register-panel">
+      <div className="auth-heading">
+        <h1>Create your account</h1>
+        <p className="subtitle">Create your patient account to book and manage clinic visits.</p>
+      </div>
 
-        {error && <div className="message error-message">{error}</div>}
+        {error && <div className="message error-message" role="alert">{error}</div>}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form className="auth-form register-form-grid" onSubmit={handleSubmit} noValidate>
           {fields.map(([name, label, type, autoComplete]) => (
-            <div className="auth-field" key={name}>
+            <div className={`auth-field auth-field-${name}`} key={name}>
               <label htmlFor={name}>{label}</label>
               <input
                 id={name}
@@ -192,20 +195,39 @@ function Register() {
                 aria-invalid={Boolean(fieldErrors[name])}
                 className={fieldErrors[name] ? 'input-error' : ''}
               />
-              <FieldError message={fieldErrors[name]} />
+              <FieldFeedback
+                message={fieldErrors[name]}
+                valid={Boolean(
+                  touched[name] &&
+                    formData[name] &&
+                    !fieldErrors[name] &&
+                    !['password', 'confirmPassword'].includes(name),
+                )}
+              />
+              {name === 'password' && (
+                <p className={`auth-hint${formData.password.length >= 8 && formData.password.length <= 16 ? ' auth-hint-valid' : ''}`}>
+                  Use 8–16 characters.
+                </p>
+              )}
+              {name === 'confirmPassword' && formData.confirmPassword && (
+                <p className={`auth-hint${formData.confirmPassword === formData.password ? ' auth-hint-valid' : ' auth-hint-invalid'}`}>
+                  {formData.confirmPassword === formData.password
+                    ? 'Passwords match.'
+                    : 'Passwords do not match.'}
+                </p>
+              )}
             </div>
           ))}
 
-          <button type="submit" disabled={loading}>
+          <button className="auth-submit-button register-submit" type="submit" disabled={loading}>
             {loading ? 'Sending verification code...' : 'Register'}
           </button>
         </form>
 
         <p className="auth-link">
-          Already have an account? <Link to="/login">Login</Link>
+          Already have an account? <Link to="/login">Sign in</Link>
         </p>
-      </section>
-    </main>
+    </AuthPage>
   )
 }
 

@@ -30,6 +30,7 @@ const populateConsultation = (query) =>
 
 const populatePrescription = (query) =>
   query
+    .populate("doctorId", "doctorNumber firstName middleName lastName")
     .populate("serviceId", "name")
     .populate("appointmentId", "bookingType startAt")
     .populate({
@@ -52,7 +53,7 @@ const getPatientHistory = async (user) => {
       .sort({ startAt: -1 }),
     populatePrescription(
       Prescription.find({ patientId: patient._id, status: "issued" })
-        .select("consultationId appointmentId serviceId status issuedAt generalInstructions medications createdAt")
+        .select("consultationId appointmentId doctorId serviceId status issuedAt generalInstructions medications createdAt")
         .sort({ issuedAt: -1 })
     ),
   ]);

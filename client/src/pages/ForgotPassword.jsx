@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import LockResetOutlinedIcon from '@mui/icons-material/LockResetOutlined'
+import AuthPage from '../components/AuthPage'
 import api from '../services/api'
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -49,18 +51,20 @@ function ForgotPassword() {
   }
 
   return (
-    <main className="page-shell">
-      <section className="auth-card">
-        <h1>Forgot password</h1>
+    <AuthPage>
+      <div className="auth-heading">
+        <span className="auth-icon-badge"><LockResetOutlinedIcon /></span>
+        <h1>Forgot password?</h1>
         <p className="subtitle">
-          Enter your account email and we&apos;ll send a verification code.
+          Enter your account email and we&apos;ll send you a reset code.
         </p>
+      </div>
 
-        {error && <div className="message error-message">{error}</div>}
+        {error && <div className="message error-message" role="alert">{error}</div>}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <div className="auth-field">
-            <label htmlFor="reset-email">Email *</label>
+            <label htmlFor="reset-email">Email address *</label>
             <input
               id="reset-email"
               type="email"
@@ -80,16 +84,15 @@ function ForgotPassword() {
             )}
           </div>
 
-          <button type="submit" disabled={loading}>
+          <button className="auth-submit-button" type="submit" disabled={loading}>
             {loading ? 'Sending code...' : 'Send Code'}
           </button>
         </form>
 
         <p className="auth-link">
-          <Link to="/login">Back to Login</Link>
+          Remember your password? <Link to="/login">Back to sign in</Link>
         </p>
-      </section>
-    </main>
+    </AuthPage>
   )
 }
 

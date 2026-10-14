@@ -7,11 +7,13 @@ import AuthProvider from './context/AuthProvider'
 import useAuth from './hooks/useAuth'
 import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
+import PublicLanding from './pages/PublicLanding'
 import PatientForm from './pages/PatientForm'
 import Patients from './pages/Patients'
 import PatientAppointments from './pages/PatientAppointments'
 import PatientMedicalHistory from './pages/PatientMedicalHistory'
 import PatientMedicalRecord from './pages/PatientMedicalRecord'
+import PatientPrescriptions from './pages/PatientPrescriptions'
 import BookAppointment from './pages/BookAppointment'
 import Profile from './pages/Profile'
 import Register from './pages/Register'
@@ -39,6 +41,10 @@ import DoctorPrescriptions from './pages/DoctorPrescriptions'
 import DoctorPrescriptionWorkspace from './pages/DoctorPrescriptionWorkspace'
 import { getRoleDestination } from './utils/authRoutes'
 import './App.css'
+import './auth-polish.css'
+import './patient-portal.css'
+import './receptionist-portal.css'
+import './doctor-portal.css'
 
 function DefaultRoute() {
   const { token, user, loading } = useAuth()
@@ -83,6 +89,7 @@ const placeholder = (title, description) => (
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<PublicLanding />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
@@ -118,10 +125,7 @@ function AppRoutes() {
           />
           <Route
             path="/patient/prescriptions"
-            element={placeholder(
-              'Prescriptions',
-              'Prescription records will be available in a later development phase.',
-            )}
+            element={<PatientPrescriptions />}
           />
           <Route path="/patient/profile" element={<Profile />} />
           <Route

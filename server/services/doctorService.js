@@ -13,6 +13,33 @@ const { getNextDoctorNumber } = require("./doctorNumberService");
 const { buildPagination, escapeRegex, getPagination } = require("../utils/pagination");
 const { sendDoctorInvitation } = require("./accountSetupService");
 const { recordAudit } = require("./auditService");
+const cloudinaryService = require("./cloudinaryService");
+
+const detectImageType = (buffer) => {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+  if (
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  return null;
+};
 
 const ensureServicesExist = async (serviceIds, session) => {
   const count = await Service.countDocuments({ _id: { $in: serviceIds } }).session(session || null);
@@ -62,6 +89,54 @@ const getMyDoctor = (userId) =>
   Doctor.findOne({ userId })
     .populate("serviceIds", "name status")
     .populate("userId", "passwordSetupRequired status");
+
+const updateMyProfileImage = async (userId, file) => {
+  if (!file?.buffer) {
+    throw new AppError("Select a profile photo to upload", 400);
+  }
+
+  const detectedType = detectImageType(file.buffer);
+  if (!detectedType || detectedType !== file.mimetype) {
+    throw new AppError("Profile photo must be a valid JPEG, PNG, or WebP image", 400);
+  }
+
+  const doctor = await Doctor.findOne({ userId }).select("_id");
+  if (!doctor) {
+    throw new AppError("Doctor profile not found", 404);
+  }
+
+  const uploadedImage = await cloudinaryService.uploadDoctorImage(file.buffer);
+  let previousDoctor;
+  try {
+    previousDoctor = await Doctor.findOneAndUpdate(
+      { _id: doctor._id, userId },
+      { $set: { profileImage: uploadedImage } },
+      { new: false, runValidators: true }
+    ).select("+profileImage.publicId");
+
+    if (!previousDoctor) {
+      throw new AppError("Doctor profile not found", 404);
+    }
+  } catch (error) {
+    try {
+      await cloudinaryService.deleteImage(uploadedImage.publicId);
+    } catch (cleanupError) {
+      console.error("Unable to clean up an unused doctor profile image");
+    }
+    throw error;
+  }
+
+  const previousPublicId = previousDoctor.profileImage?.publicId;
+  if (previousPublicId && previousPublicId !== uploadedImage.publicId) {
+    try {
+      await cloudinaryService.deleteImage(previousPublicId);
+    } catch (error) {
+      console.error("Unable to delete the previous doctor profile image");
+    }
+  }
+
+  return getMyDoctor(userId);
+};
 
 const createDoctor = async (data, actor, request) => {
   const internalPassword = crypto.randomBytes(24).toString("base64url");
@@ -163,16 +238,27 @@ const deleteDoctor = async (id) => {
   }
   const session = await mongoose.startSession();
   let deleted = false;
+  let profileImagePublicId = "";
   try {
     await session.withTransaction(async () => {
-      const doctor = await Doctor.findById(id).session(session);
+      const doctor = await Doctor.findById(id)
+        .select("+profileImage.publicId")
+        .session(session);
       if (!doctor) return;
+      profileImagePublicId = doctor.profileImage?.publicId || "";
       await Doctor.deleteOne({ _id: doctor._id }, { session });
       await DoctorSchedule.deleteOne({ doctorId: doctor._id }, { session });
       await User.deleteOne({ _id: doctor.userId, role: "doctor" }, { session });
       deleted = true;
     });
   } finally { await session.endSession(); }
+  if (deleted && profileImagePublicId) {
+    try {
+      await cloudinaryService.deleteImage(profileImagePublicId);
+    } catch (error) {
+      console.error("Unable to delete the removed doctor's profile image");
+    }
+  }
   return deleted;
 };
 
@@ -190,4 +276,4 @@ const resendInvitation = async (id) => {
   return { message: "Account setup invitation sent successfully." };
 };
 
-module.exports = { listDoctors, getDoctor, getMyDoctor, createDoctor, updateDoctor, deleteDoctor, resendInvitation };
+module.exports = { listDoctors, getDoctor, getMyDoctor, updateMyProfileImage, createDoctor, updateDoctor, deleteDoctor, resendInvitation };

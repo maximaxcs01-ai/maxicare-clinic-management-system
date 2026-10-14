@@ -10,6 +10,7 @@ import {
   CircularProgress,
   Divider,
   FormControlLabel,
+  Paper,
   Radio,
   RadioGroup,
   Snackbar,
@@ -21,6 +22,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
+import DoctorAvatar from '../components/DoctorAvatar'
 import useAuth from '../hooks/useAuth'
 import { getServices } from '../services/serviceApi'
 import {
@@ -29,7 +31,7 @@ import {
 } from '../services/appointmentApi'
 import { searchWalkInPatients } from '../services/patientApi'
 
-const steps = ['Patient', 'Service', 'Review']
+const steps = ['Patient', 'Visit Details', 'Queue / Review']
 
 function WalkInsManagement() {
   const navigate = useNavigate()
@@ -58,6 +60,7 @@ function WalkInsManagement() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
   const [notice, setNotice] = useState('')
+  const isReceptionist = user?.role === 'receptionist'
 
   useEffect(() => {
     let active = true
@@ -138,8 +141,10 @@ function WalkInsManagement() {
   }
 
   const currentDoctorPreview =
-    doctorPreview?.serviceId === selectedService?._id
-      ? doctorPreview.doctor
+    doctorPreview &&
+    selectedService &&
+    doctorPreview.serviceId === selectedService._id
+      ? doctorPreview.doctor || null
       : null
 
   const patientName = useMemo(() => {
@@ -201,23 +206,51 @@ function WalkInsManagement() {
   }
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
-      <Stack spacing={0.5} sx={{ mb: 3 }}>
-        <Typography variant="h4">Walk-Ins</Typography>
-        <Typography color="text.secondary">
-          Register a walk-in patient and add them to the next available doctor&apos;s queue.
-        </Typography>
+    <Box component="section" className={isReceptionist ? 'receptionist-page' : undefined} sx={{ width: '100%', minWidth: 0 }}>
+      <Stack
+        className={isReceptionist ? 'receptionist-page-header' : undefined}
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{
+          mb: 3,
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+        }}
+      >
+        <Box>
+          <Typography variant="h4">Walk-Ins</Typography>
+          <Typography color="text.secondary">
+            Register a walk-in patient and add them to the next available doctor&apos;s queue.
+          </Typography>
+        </Box>
+        {isReceptionist && (
+          <Button variant="outlined" onClick={() => navigate(queuePath)}>
+            View Queue
+          </Button>
+        )}
       </Stack>
 
-      <Card sx={{ width: '100%' }}>
+      <Card className={isReceptionist ? 'receptionist-walkins-card' : undefined} sx={{ width: '100%' }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           {success ? (
             <Stack spacing={2}>
               <Alert severity="success">{notice}</Alert>
-              <Typography variant="body2">
-                {patientName} is assigned to Dr. {success.queueEntry?.doctorId?.firstName}{' '}
-                {success.queueEntry?.doctorId?.lastName}.
-              </Typography>
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                <DoctorAvatar
+                  imageUrl={success.queueEntry?.doctorId?.profileImage?.url}
+                  firstName={success.queueEntry?.doctorId?.firstName}
+                  lastName={success.queueEntry?.doctorId?.lastName}
+                  size={48}
+                />
+                <Box>
+                  <Typography fontWeight={700}>{patientName}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {success.queueEntry?.doctorId
+                      ? `Assigned to Dr. ${success.queueEntry.doctorId.firstName} ${success.queueEntry.doctorId.lastName}`
+                      : 'Added to the queue'}
+                  </Typography>
+                </Box>
+              </Stack>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
                 <Button variant="contained" onClick={() => navigate(queuePath)}>
                   View Queue
@@ -305,27 +338,38 @@ function WalkInsManagement() {
                             label="Search patients"
                             placeholder="Name, patient number, email, or mobile"
                             helperText="Enter at least two characters."
-                            InputProps={{
-                              ...params.InputProps,
-                              endAdornment: (
+                            slotProps={{
+                              ...params.slotProps,
+                              input: {
+                                ...params.slotProps.input,
+                                endAdornment: (
                                 <>
                                   {patientLoading && (
                                     <CircularProgress color="inherit" size={18} />
                                   )}
-                                  {params.InputProps.endAdornment}
+                                  {params.slotProps.input.endAdornment}
                                 </>
-                              ),
+                                ),
+                              },
                             }}
                           />
                         )}
                       />
                       {selectedPatient && (
-                        <Alert severity="info">
-                          Selected: {selectedPatient.firstName}{' '}
-                          {selectedPatient.middleName}{' '}
-                          {selectedPatient.lastName} ·{' '}
-                          {selectedPatient.patientNumber}
-                        </Alert>
+                        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
+                          <Typography variant="overline" color="text.secondary">
+                            Selected patient
+                          </Typography>
+                          <Typography fontWeight={700}>
+                            {selectedPatient.firstName}{' '}
+                            {selectedPatient.middleName}{' '}
+                            {selectedPatient.lastName}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {selectedPatient.patientNumber}
+                            {selectedPatient.email ? ` · ${selectedPatient.email}` : ''}
+                          </Typography>
+                        </Paper>
                       )}
                     </Stack>
                   ) : (
@@ -392,7 +436,7 @@ function WalkInsManagement() {
                             mobileNumber: event.target.value,
                           }))
                         }
-                        inputProps={{ maxLength: 11 }}
+                        slotProps={{ htmlInput: { maxLength: 11 } }}
                       />
                     </Box>
                   )}
@@ -456,21 +500,58 @@ function WalkInsManagement() {
                       There are no active clinic services.
                     </Alert>
                   )}
-                  {selectedService && (
+                  {!selectedService && (
+                    <Alert severity="info">
+                      Select a service to check on-duty doctor availability.
+                    </Alert>
+                  )}
+                  {selectedService && doctorLoading && (
                     <Alert
-                      severity={
-                        doctorLoading
-                          ? 'info'
-                          : currentDoctorPreview
-                            ? 'success'
-                            : 'warning'
-                      }
+                      severity="info"
+                      icon={<CircularProgress color="inherit" size={18} />}
                     >
-                      {doctorLoading
-                        ? 'Checking on-duty doctors and queue lengths...'
-                        : currentDoctorPreview
-                          ? `Suggested doctor: Dr. ${currentDoctorPreview.doctor.firstName} ${currentDoctorPreview.doctor.lastName} · ${currentDoctorPreview.activeQueueCount} active in queue`
-                          : 'No on-duty doctor currently supports this service.'}
+                      Checking on-duty doctors and queue lengths...
+                    </Alert>
+                  )}
+                  {selectedService && !doctorLoading && currentDoctorPreview && (
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        p: 2,
+                        borderRadius: 2.5,
+                        borderColor: 'success.light',
+                        backgroundColor: 'success.50',
+                      }}
+                    >
+                      <DoctorAvatar
+                        imageUrl={currentDoctorPreview.doctor?.profileImage?.url}
+                        firstName={currentDoctorPreview.doctor?.firstName}
+                        lastName={currentDoctorPreview.doctor?.lastName}
+                        size={52}
+                      />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="overline" color="success.dark">
+                          Doctor assigned
+                        </Typography>
+                        <Typography fontWeight={700}>
+                          Dr. {currentDoctorPreview.doctor?.firstName}{' '}
+                          {currentDoctorPreview.doctor?.lastName}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {currentDoctorPreview.doctor?.specialization || 'Available for this service'}
+                          {' · '}
+                          {currentDoctorPreview.activeQueueCount ?? 0} active in queue
+                        </Typography>
+                      </Box>
+                    </Paper>
+                  )}
+                  {selectedService && !doctorLoading && !currentDoctorPreview && (
+                    <Alert severity="warning">
+                      {error ||
+                        'No on-duty doctor currently supports this service.'}
                     </Alert>
                   )}
                 </Stack>
@@ -494,7 +575,7 @@ function WalkInsManagement() {
                   <Typography>
                     <strong>Suggested doctor:</strong>{' '}
                     {currentDoctorPreview
-                      ? `Dr. ${currentDoctorPreview.doctor.firstName} ${currentDoctorPreview.doctor.lastName} (${currentDoctorPreview.activeQueueCount} active in queue)`
+                      ? `Dr. ${currentDoctorPreview.doctor?.firstName || ''} ${currentDoctorPreview.doctor?.lastName || ''} (${currentDoctorPreview.activeQueueCount ?? 0} active in queue)`
                       : 'Unavailable'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -505,9 +586,8 @@ function WalkInsManagement() {
 
               <Stack
                 direction={{ xs: 'column-reverse', sm: 'row' }}
-                justifyContent="space-between"
                 spacing={1.5}
-                sx={{ mt: 3 }}
+                sx={{ mt: 3, justifyContent: 'space-between' }}
               >
                 <Button
                   disabled={step === 0 || submitting}

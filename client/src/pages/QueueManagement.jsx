@@ -1,5 +1,6 @@
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined'
+import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined'
 import ReplayOutlinedIcon from '@mui/icons-material/ReplayOutlined'
 import {
   Alert,
@@ -9,6 +10,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Grid,
   IconButton,
   Paper,
   Snackbar,
@@ -24,10 +26,11 @@ import {
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
 import useAuth from '../hooks/useAuth'
+import { getDashboard } from '../services/dashboardApi'
 import {
   callNextQueueEntry,
   getMyQueue,
@@ -48,7 +51,9 @@ function QueueManagement() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const isDoctor = user?.role === 'doctor'
+  const isReceptionist = user?.role === 'receptionist'
   const [rows, setRows] = useState([])
+  const [operationalSummary, setOperationalSummary] = useState(null)
   const [queueDate, setQueueDate] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -81,6 +86,28 @@ function QueueManagement() {
   useEffect(() => {
     loadQueue()
   }, [loadQueue, refreshKey])
+
+  useEffect(() => {
+    if (!isReceptionist) return
+    let active = true
+    getDashboard()
+      .then((response) => {
+        if (active) setOperationalSummary(response.data.data)
+      })
+      .catch((error) => {
+        if (active) {
+          setNotice({
+            severity: 'error',
+            message:
+              error.response?.data?.message ||
+              'Unable to load queue status counts.',
+          })
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [isReceptionist, refreshKey])
 
   const firstWaitingEntryByDoctor = useMemo(() => {
     const firstWaiting = new Map()
@@ -163,35 +190,75 @@ function QueueManagement() {
   }
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
+    <Box component="section" className={isDoctor ? 'doctor-page doctor-queue-page' : isReceptionist ? 'receptionist-page receptionist-queue-page' : undefined} sx={{ width: '100%', minWidth: 0 }}>
       <Stack
+        className={isDoctor ? 'doctor-page-header' : isReceptionist ? 'receptionist-page-header' : undefined}
         direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'stretch', sm: 'center' }}
         spacing={2}
-        sx={{ width: '100%', mb: 3 }}
+        sx={{
+          width: '100%',
+          mb: 3,
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+        }}
       >
         <Box>
-          <Typography variant="h4">{isDoctor ? 'My Queue' : 'Queue'}</Typography>
+          <Typography variant="h4">
+            {isDoctor ? 'My Queue' : isReceptionist ? 'Queue Management' : 'Queue'}
+          </Typography>
           <Typography color="text.secondary">
             {isDoctor
               ? 'View today’s patients waiting for your consultation.'
+              : isReceptionist
+                ? 'Monitor patient flow and manage the waiting queue.'
               : 'Manage today’s checked-in and walk-in patients.'}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
+        >
           {queueDate && (
             <Typography variant="body2" color="text.secondary">
               {queueDate} · Manila time
             </Typography>
           )}
-          <Button onClick={() => setRefreshKey((current) => current + 1)}>
+          {isReceptionist && (
+            <Button
+              component={RouterLink}
+              to="/receptionist/walk-ins"
+              variant="contained"
+              startIcon={<PersonAddAltOutlinedIcon />}
+            >
+              Walk-In Patient
+            </Button>
+          )}
+          <Button variant={isReceptionist ? 'outlined' : 'text'} onClick={() => setRefreshKey((current) => current + 1)}>
             Refresh
           </Button>
         </Stack>
       </Stack>
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      {isReceptionist && (
+        <Grid container spacing={1.5} className="receptionist-queue-counts">
+          {[
+            ['Waiting', loading ? '—' : rows.filter((entry) => entry.queueStatus === 'waiting').length],
+            ['Called', loading ? '—' : rows.filter((entry) => entry.queueStatus === 'called').length],
+            ['In Consultation', operationalSummary?.today?.statusCounts?.in_consultation ?? '—'],
+            ['Active Queue', operationalSummary?.activeQueueCount ?? (loading ? '—' : rows.length)],
+          ].map(([label, value]) => (
+            <Grid key={label} size={{ xs: 6, md: 3 }}>
+              <Paper className="receptionist-queue-count">
+                <Typography variant="body2" color="text.secondary">{label}</Typography>
+                <Typography variant="h5" fontWeight={700}>{value}</Typography>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      <Paper className={isDoctor ? 'doctor-management-panel' : isReceptionist ? 'receptionist-management-panel' : undefined} sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer>
           <Table>
             <TableHead>
@@ -267,8 +334,10 @@ function QueueManagement() {
                           <Stack
                             direction="row"
                             spacing={0.5}
-                            justifyContent="flex-end"
-                            alignItems="center"
+                            sx={{
+                              justifyContent: 'flex-end',
+                              alignItems: 'center',
+                            }}
                           >
                             {isFirstWaiting && (
                               <Button

@@ -1,9 +1,14 @@
 import { Alert, Box, CircularProgress, Snackbar, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import DoctorScheduleCalendar from '../components/schedule/DoctorScheduleCalendar'
 import ScheduleEditor from '../components/schedule/ScheduleEditor'
 import useAuth from '../hooks/useAuth'
-import { getDoctorSchedule, getMyDoctor, saveDoctorSchedule } from '../services/scheduleApi'
+import {
+  getDoctorSchedule,
+  getMyDoctor,
+  saveDoctorSchedule,
+} from '../services/scheduleApi'
 
 function DoctorSchedulePage({ readOnly = false }) {
   const { id } = useParams()
@@ -24,31 +29,103 @@ function DoctorSchedulePage({ readOnly = false }) {
         const doctorResponse = user.role === 'doctor' ? await getMyDoctor() : null
         const doctorId = user.role === 'doctor' ? doctorResponse.data.data._id : id
         const response = await getDoctorSchedule(doctorId)
-        if (active) { setDoctor(response.data.doctor); setSchedule(response.data.schedule) }
-      } catch (requestError) { if (active) setError(requestError.response?.data?.message || 'Unable to load schedule.') }
-      finally { if (active) setLoading(false) }
+        if (active) {
+          setDoctor(response.data.doctor)
+          setSchedule(response.data.schedule)
+          setError('')
+        }
+      } catch (requestError) {
+        if (active) {
+          setError(
+            requestError.response?.data?.message || 'Unable to load schedule.',
+          )
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
     }
     load()
-    return () => { active = false }
+    return () => {
+      active = false
+    }
   }, [id, user.role])
 
   const save = async () => {
     try {
-      setSaving(true); setError('')
+      setSaving(true)
+      setError('')
       const response = await saveDoctorSchedule(doctor.id, {
         weeklySchedule: schedule.weeklySchedule,
         dateOverrides: schedule.dateOverrides,
         status: schedule.status,
       })
-      setSchedule(response.data.schedule); setSuccess(response.data.message)
-    } catch (requestError) { setError(requestError.response?.data?.message || 'Unable to save schedule.') }
-    finally { setSaving(false) }
+      setSchedule(response.data.schedule)
+      setSuccess(response.data.message)
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message || 'Unable to save schedule.',
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
-  if (loading) return <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress /></Box>
-  if (!schedule || !doctor) return <Alert severity="error">{error || 'Schedule unavailable.'}</Alert>
+  if (loading) {
+    return (
+      <Box sx={{ py: 8, textAlign: 'center' }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+  if (!schedule || !doctor) {
+    return <Alert severity="error">{error || 'Schedule unavailable.'}</Alert>
+  }
 
-  return <Box component="section"><Typography variant="h4">Doctor Schedule</Typography><Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>{doctor.firstName} {doctor.middleName} {doctor.lastName} · {doctor.doctorNumber}</Typography><ScheduleEditor schedule={schedule} editable={editable} saving={saving} error={error} onChange={setSchedule} onSave={save} /><Snackbar open={Boolean(success)} autoHideDuration={5000} onClose={() => setSuccess('')}><Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert></Snackbar></Box>
+  const editor = user.role === 'doctor' ? (
+    <DoctorScheduleCalendar
+      schedule={schedule}
+      editable={editable}
+      saving={saving}
+      error={error}
+      onChange={setSchedule}
+      onSave={save}
+    />
+  ) : (
+    <ScheduleEditor
+      schedule={schedule}
+      editable={editable}
+      saving={saving}
+      error={error}
+      onChange={setSchedule}
+      onSave={save}
+    />
+  )
+
+  return (
+    <Box
+      component="section"
+      className={
+        user.role === 'doctor' ? 'doctor-page doctor-schedule-page' : undefined
+      }
+    >
+      <Box className={user.role === 'doctor' ? 'doctor-page-header' : undefined}>
+        <Typography variant="h4">My Schedule</Typography>
+        <Typography color="text.secondary">
+          Manage weekly availability and date overrides · {doctor.doctorNumber}
+        </Typography>
+      </Box>
+      {editor}
+      <Snackbar
+        open={Boolean(success)}
+        autoHideDuration={5000}
+        onClose={() => setSuccess('')}
+      >
+        <Alert severity="success" onClose={() => setSuccess('')}>
+          {success}
+        </Alert>
+      </Snackbar>
+    </Box>
+  )
 }
 
 export default DoctorSchedulePage

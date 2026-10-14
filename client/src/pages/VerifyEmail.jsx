@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import MarkEmailReadOutlinedIcon from '@mui/icons-material/MarkEmailReadOutlined'
+import AuthPage from '../components/AuthPage'
 import OtpInput from '../components/OtpInput'
 import api from '../services/api'
 
@@ -94,9 +96,11 @@ function VerifyEmail() {
 
   if (!email) {
     return (
-      <main className="page-shell">
-        <section className="auth-card verify-card">
+      <AuthPage>
+        <div className="auth-heading">
+          <span className="auth-icon-badge"><MarkEmailReadOutlinedIcon /></span>
           <h1>Verify your email</h1>
+        </div>
           <div className="message error-message">
             Your verification session is unavailable. Register again to receive
             a new code.
@@ -104,21 +108,22 @@ function VerifyEmail() {
           <p className="auth-link">
             <Link to="/register">Return to registration</Link>
           </p>
-        </section>
-      </main>
+      </AuthPage>
     )
   }
 
   return (
-    <main className="page-shell">
-      <section className="auth-card verify-card">
-        <h1>Verify your email</h1>
-        <p className="subtitle">
-          Code sent to: <strong>{maskEmail(email)}</strong>
-        </p>
+    <AuthPage className="auth-verify-panel">
+        <div className="auth-heading">
+          <span className="auth-icon-badge"><MarkEmailReadOutlinedIcon /></span>
+          <h1>Verify your email</h1>
+          <p className="subtitle">
+            Enter the six-digit code we sent to <strong>{maskEmail(email)}</strong>.
+          </p>
+        </div>
 
-        {error && <div className="message error-message">{error}</div>}
-        {message && <div className="message success-message">{message}</div>}
+        {error && <div className="message error-message" role="alert">{error}</div>}
+        {message && <div className="message success-message" role="status">{message}</div>}
 
         {verified ? (
           <p className="auth-link">
@@ -126,13 +131,14 @@ function VerifyEmail() {
           </p>
         ) : (
           <form onSubmit={handleVerify}>
+            <p className="otp-instruction">Your code is valid for a limited time.</p>
             <OtpInput
               digits={digits}
               onChange={setDigits}
               disabled={loading}
             />
 
-            <button type="submit" disabled={loading || resending}>
+            <button className="auth-submit-button" type="submit" disabled={loading || resending}>
               {loading ? 'Verifying...' : 'Verify Email'}
             </button>
 
@@ -150,8 +156,7 @@ function VerifyEmail() {
             </button>
           </form>
         )}
-      </section>
-    </main>
+    </AuthPage>
   )
 }
 

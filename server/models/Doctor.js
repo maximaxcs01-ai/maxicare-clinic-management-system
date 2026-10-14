@@ -22,6 +22,10 @@ const doctorSchema = new mongoose.Schema(
     mobileNumber: { type: String, required: true, trim: true, match: /^09\d{9}$/ },
     licenseNumber: { type: String, required: true, unique: true, trim: true },
     specialization: { type: String, required: true, trim: true },
+    profileImage: {
+      url: { type: String, trim: true, default: "" },
+      publicId: { type: String, trim: true, default: "", select: false },
+    },
     serviceIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Service" }],
     status: {
       type: String,

@@ -2,6 +2,8 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import AddIcon from '@mui/icons-material/Add'
 import EventRepeatOutlinedIcon from '@mui/icons-material/EventRepeatOutlined'
 import HighlightOffOutlinedIcon from '@mui/icons-material/HighlightOffOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import {
   Alert,
   Box,
@@ -11,6 +13,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   Pagination,
   Paper,
   Snackbar,
@@ -93,6 +96,7 @@ function PatientAppointments() {
 
   // Notification state
   const [notice, setNotice] = useState(null)
+  const [detailsAppointment, setDetailsAppointment] = useState(null)
 
   // Cancellation modal state
   const [cancelModal, setCancelModal] = useState({
@@ -288,15 +292,22 @@ function PatientAppointments() {
   }
 
   return (
-    <Box component="section" sx={{ width: '100%' }}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'stretch', sm: 'center' }}
-        gap={2}
-        sx={{ width: '100%', mb: 3 }}
+    <Box component="section" className="patient-page patient-appointments-page" sx={{ width: '100%' }}>
+      <Box
+        className="patient-management-header"
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          alignItems: 'center',
+          gap: 2,
+          width: '100%',
+          mb: 3,
+          '@media (min-width:768px)': {
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
+          },
+        }}
       >
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography variant="h4">Appointments</Typography>
           <Typography color="text.secondary">
             View and manage your clinic appointments.
@@ -308,16 +319,20 @@ function PatientAppointments() {
           variant="contained"
           startIcon={<AddIcon />}
           sx={{
-            minWidth: { xs: '100%', sm: 190 },
+            justifySelf: 'stretch',
             height: 44,
             borderRadius: 2,
             px: 2.25,
             fontWeight: 600,
+            '@media (min-width:768px)': {
+              justifySelf: 'end',
+              minWidth: 190,
+            },
           }}
         >
           Book Appointment
         </Button>
-      </Stack>
+      </Box>
 
       {location.state?.message && (
         <Alert severity="success" sx={{ mb: 2.5 }}>
@@ -414,12 +429,22 @@ function PatientAppointments() {
                         <StatusChip status={appointment.status} />
                       </TableCell>
                       <TableCell align="right">
-                        {canAct ? (
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            justifyContent="flex-end"
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="flex-end"
+                        >
+                          <Button
+                            size="small"
+                            variant="text"
+                            startIcon={<VisibilityOutlinedIcon />}
+                            onClick={() => setDetailsAppointment(appointment)}
+                            sx={{ textTransform: 'none', fontWeight: 600 }}
                           >
+                            View
+                          </Button>
+                          {canAct && (
+                            <>
                             <Tooltip
                               title={
                                 isWithin6Hours
@@ -463,12 +488,9 @@ function PatientAppointments() {
                                 </Button>
                               </span>
                             </Tooltip>
-                          </Stack>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            —
-                          </Typography>
-                        )}
+                            </>
+                          )}
+                        </Stack>
                       </TableCell>
                     </TableRow>
                   )
@@ -498,6 +520,93 @@ function PatientAppointments() {
         </Stack>
       </Paper>
 
+      {/* Appointment Details Dialog */}
+      <Dialog
+        open={Boolean(detailsAppointment)}
+        onClose={() => setDetailsAppointment(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle className="patient-dialog-title">
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack direction="row" alignItems="center" spacing={1.25}>
+              <Box className="patient-dialog-icon">
+                <VisibilityOutlinedIcon fontSize="small" />
+              </Box>
+              <Typography variant="h6" component="span">
+                Appointment Details
+              </Typography>
+            </Stack>
+            <IconButton
+              aria-label="Close appointment details"
+              onClick={() => setDetailsAppointment(null)}
+            >
+              <CloseOutlinedIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers>
+          {detailsAppointment && (
+            <Box className="appointment-detail-grid">
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Service
+                </Typography>
+                <Typography fontWeight={650}>
+                  {detailsAppointment.serviceId?.name || 'Service unavailable'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Doctor
+                </Typography>
+                <Typography fontWeight={650}>
+                  {detailsAppointment.doctorId
+                    ? `Dr. ${detailsAppointment.doctorId.firstName} ${detailsAppointment.doctorId.lastName}`
+                    : 'Doctor unavailable'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Date
+                </Typography>
+                <Typography>{formatDate(detailsAppointment.startAt)}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Time
+                </Typography>
+                <Typography>
+                  {formatTime(detailsAppointment.startAt)} –{' '}
+                  {formatTime(detailsAppointment.endAt)}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Status
+                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <StatusChip status={detailsAppointment.status} />
+                </Box>
+              </Box>
+              <Box className="appointment-detail-wide">
+                <Typography variant="caption" color="text.secondary">
+                  Reason for visit
+                </Typography>
+                <Typography>
+                  {detailsAppointment.reasonForVisit || 'No reason provided.'}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button variant="outlined" onClick={() => setDetailsAppointment(null)}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Cancellation Dialog */}
       <Dialog
         open={cancelModal.open}
@@ -509,7 +618,25 @@ function PatientAppointments() {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Cancel Appointment</DialogTitle>
+        <DialogTitle className="patient-dialog-title">
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack direction="row" alignItems="center" spacing={1.25}>
+              <Box className="patient-dialog-icon patient-dialog-icon-error">
+                <HighlightOffOutlinedIcon fontSize="small" />
+              </Box>
+              <Typography variant="h6" component="span">
+                Cancel Appointment
+              </Typography>
+            </Stack>
+            <IconButton
+              aria-label="Close cancellation dialog"
+              disabled={cancelModal.loading}
+              onClick={() => setCancelModal((p) => ({ ...p, open: false }))}
+            >
+              <CloseOutlinedIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
         <DialogContent dividers>
           {cancelModal.error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -553,6 +680,7 @@ function PatientAppointments() {
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button
+            variant="outlined"
             onClick={() => setCancelModal((p) => ({ ...p, open: false }))}
             disabled={cancelModal.loading}
           >
@@ -577,10 +705,28 @@ function PatientAppointments() {
             ? undefined
             : () => setRescheduleModal((p) => ({ ...p, open: false }))
         }
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Reschedule Appointment</DialogTitle>
+        <DialogTitle className="patient-dialog-title">
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack direction="row" alignItems="center" spacing={1.25}>
+              <Box className="patient-dialog-icon">
+                <EventRepeatOutlinedIcon fontSize="small" />
+              </Box>
+              <Typography variant="h6" component="span">
+                Reschedule Appointment
+              </Typography>
+            </Stack>
+            <IconButton
+              aria-label="Close reschedule dialog"
+              disabled={rescheduleModal.submitting}
+              onClick={() => setRescheduleModal((p) => ({ ...p, open: false }))}
+            >
+              <CloseOutlinedIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
         <DialogContent dividers>
           {rescheduleModal.error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -588,8 +734,9 @@ function PatientAppointments() {
             </Alert>
           )}
           {rescheduleModal.appointment && (
-            <Stack spacing={2.5}>
+            <Stack spacing={2.5} className="reschedule-layout">
               <Box
+                className="reschedule-current"
                 sx={{
                   p: 1.5,
                   borderRadius: 1.5,
@@ -622,6 +769,7 @@ function PatientAppointments() {
               </Box>
 
               <TextField
+                className="reschedule-date"
                 label="Select New Date"
                 type="date"
                 value={rescheduleModal.date}
@@ -635,7 +783,7 @@ function PatientAppointments() {
               />
 
               {rescheduleModal.date && (
-                <Box>
+                <Box className="reschedule-slots">
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>
                     Available 30-Minute Slots
                   </Typography>
@@ -691,6 +839,7 @@ function PatientAppointments() {
               )}
 
               <TextField
+                className="reschedule-reason"
                 label="Reason for rescheduling (optional)"
                 multiline
                 rows={2}
@@ -711,6 +860,7 @@ function PatientAppointments() {
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button
+            variant="outlined"
             onClick={() => setRescheduleModal((p) => ({ ...p, open: false }))}
             disabled={rescheduleModal.submitting}
           >

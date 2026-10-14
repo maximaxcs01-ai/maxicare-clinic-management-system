@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import AuthPage from '../components/AuthPage'
 import api from '../services/api'
 import useAuth from '../hooks/useAuth'
 import { takeAuthMessage } from '../utils/authStorage'
@@ -8,6 +11,7 @@ import { getRoleDestination } from '../utils/authRoutes'
 function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState(takeAuthMessage)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -44,53 +48,72 @@ function Login() {
   }
 
   return (
-    <main className="page-shell">
-      <section className="auth-card">
-        <h1>Clinic Management System</h1>
-        <p className="subtitle">Sign in to continue</p>
+    <AuthPage>
+      <div className="auth-heading">
+        <h1>Welcome back</h1>
+        <p className="subtitle">Sign in to your Maxicare Clinic account.</p>
+      </div>
 
-        {error && <div className="message error-message">{error}</div>}
+        {error && <div className="message error-message" role="alert">{error}</div>}
         {location.state?.message && (
-          <div className="message success-message">
+          <div className="message success-message" role="status">
             {location.state.message}
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <label htmlFor="email">Email</label>
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div className="auth-field">
+          <label htmlFor="email">Email address</label>
           <input
             id="email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
+            placeholder="you@example.com"
             required
           />
+        </div>
 
+        <div className="auth-field">
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-            required
-          />
+          <div className="password-input-wrap">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              required
+            />
+            <button
+              type="button"
+              className="password-visibility-button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <VisibilityOffOutlinedIcon /> : <VisibilityOutlinedIcon />}
+            </button>
+          </div>
+        </div>
 
-          <button type="submit" disabled={loading}>
-            {loading ? 'Signing in...' : 'Login'}
-          </button>
+        <div className="auth-login-options">
+          <label className="auth-checkbox">
+            <input type="checkbox" name="remember" defaultChecked />
+            <span>Remember me</span>
+          </label>
+          <Link to="/forgot-password">Forgot password?</Link>
+        </div>
 
-          <Link className="forgot-password-link" to="/forgot-password">
-            Forgot password?
-          </Link>
-        </form>
+        <button className="auth-submit-button" type="submit" disabled={loading}>
+          {loading ? 'Signing in...' : 'Sign In'}
+        </button>
+      </form>
 
-        <p className="auth-link">
-          Don&apos;t have an account? <Link to="/register">Register</Link>
-        </p>
-      </section>
-    </main>
+      <div className="auth-divider"><span>New to Maxicare Clinic?</span></div>
+      <Link className="auth-secondary-button" to="/register">Create an Account</Link>
+    </AuthPage>
   )
 }
 

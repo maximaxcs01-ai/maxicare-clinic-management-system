@@ -16,7 +16,7 @@ import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 
 export const roleNavigation = {
   patient: [
-    { label: 'Home', path: '/patient', icon: HomeOutlinedIcon },
+    { label: 'Dashboard', path: '/patient', icon: HomeOutlinedIcon },
     {
       label: 'Appointments',
       path: '/patient/appointments',
@@ -33,21 +33,16 @@ export const roleNavigation = {
       icon: ReceiptLongOutlinedIcon,
     },
     {
-      label: 'Profile',
+      label: 'My Profile',
       path: '/patient/profile',
       icon: PersonOutlineOutlinedIcon,
     },
   ],
   receptionist: [
     {
-      label: 'Overview',
+      label: 'Dashboard',
       path: '/receptionist',
       icon: DashboardOutlinedIcon,
-    },
-    {
-      label: 'Patients',
-      path: '/receptionist/patients',
-      icon: PeopleOutlinedIcon,
     },
     {
       label: 'Appointments',
@@ -61,14 +56,14 @@ export const roleNavigation = {
     },
     { label: 'Queue', path: '/receptionist/queue', icon: QueueOutlinedIcon },
     {
+      label: 'Patients',
+      path: '/receptionist/patients',
+      icon: PeopleOutlinedIcon,
+    },
+    {
       label: 'Doctors',
       path: '/receptionist/doctors',
       icon: LocalHospitalOutlinedIcon,
-    },
-    {
-      label: 'Profile',
-      path: '/receptionist/profile',
-      icon: PersonOutlineOutlinedIcon,
     },
   ],
   doctor: [

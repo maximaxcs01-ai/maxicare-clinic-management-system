@@ -98,7 +98,7 @@ function PatientMedicalRecord() {
   )
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
+    <Box component="section" className="patient-page patient-record-page" sx={{ width: '100%', minWidth: 0 }}>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"

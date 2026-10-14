@@ -32,18 +32,49 @@ import {
 import { getNavigationForRole } from '../config/roleNavigation'
 import useAuth from '../hooks/useAuth'
 import { getRoleDestination } from '../utils/authRoutes'
+import BrandMark from './BrandMark'
 
-const drawerWidth = 272
+const defaultDrawerWidth = 272
+const patientDrawerWidth = 224
+const patientCollapsedDrawerWidth = 72
+const patientSidebarStorageKey = 'patientSidebarCollapsed'
+const receptionistSidebarStorageKey = 'receptionistSidebarCollapsed'
+const doctorSidebarStorageKey = 'doctorSidebarCollapsed'
 
 function AuthenticatedLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [accountAnchor, setAccountAnchor] = useState(null)
+  const [patientSidebarCollapsed, setPatientSidebarCollapsed] = useState(
+    () => sessionStorage.getItem(patientSidebarStorageKey) === 'true',
+  )
+  const [receptionistSidebarCollapsed, setReceptionistSidebarCollapsed] = useState(
+    () => sessionStorage.getItem(receptionistSidebarStorageKey) === 'true',
+  )
+  const [doctorSidebarCollapsed, setDoctorSidebarCollapsed] = useState(
+    () => sessionStorage.getItem(doctorSidebarStorageKey) === 'true',
+  )
   const { user, logout } = useAuth()
   const theme = useTheme()
-  const desktop = useMediaQuery(theme.breakpoints.up('md'))
+  const patientDesktop = useMediaQuery('(min-width:768px)')
+  const standardDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const location = useLocation()
   const navigate = useNavigate()
   const navigation = getNavigationForRole(user?.role)
+  const isPatient = user?.role === 'patient'
+  const isReceptionist = user?.role === 'receptionist'
+  const isDoctor = user?.role === 'doctor'
+  const usesCollapsibleSidebar = isPatient || isReceptionist || isDoctor
+  const desktop = usesCollapsibleSidebar ? patientDesktop : standardDesktop
+  const sidebarCollapsed =
+    desktop &&
+    ((isPatient && patientSidebarCollapsed) ||
+      (isReceptionist && receptionistSidebarCollapsed) ||
+      (isDoctor && doctorSidebarCollapsed))
+  const drawerWidth = usesCollapsibleSidebar
+    ? sidebarCollapsed
+      ? patientCollapsedDrawerWidth
+      : patientDrawerWidth
+    : defaultDrawerWidth
   const roleHome = getRoleDestination(user?.role)
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ')
   const initials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`
@@ -64,21 +95,57 @@ function AuthenticatedLayout() {
     navigate(path)
   }
 
+  const toggleSidebar = () => {
+    const setCollapsed = isReceptionist
+      ? setReceptionistSidebarCollapsed
+      : isDoctor
+        ? setDoctorSidebarCollapsed
+        : setPatientSidebarCollapsed
+    const storageKey = isReceptionist
+      ? receptionistSidebarStorageKey
+      : isDoctor
+        ? doctorSidebarStorageKey
+        : patientSidebarStorageKey
+
+    setCollapsed((collapsed) => {
+      const nextValue = !collapsed
+      sessionStorage.setItem(storageKey, String(nextValue))
+      return nextValue
+    })
+  }
+
   const drawer = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Toolbar sx={{ minHeight: 72, px: 3 }}>
-        <Box>
-          <Typography
-            variant="subtitle1"
-            fontWeight={800}
-            color="primary.dark"
-          >
-            Maxicare Clinic
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Academic prototype
-          </Typography>
-        </Box>
+    <Box className="portal-drawer-content" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Toolbar
+        className="portal-branding"
+        sx={{
+          minHeight: 84,
+          justifyContent: sidebarCollapsed ? 'center' : 'space-between',
+          px: sidebarCollapsed ? 1 : 2.5,
+        }}
+      >
+        {!sidebarCollapsed &&
+          (isReceptionist ? (
+            <Box
+              component="img"
+              className="receptionist-logo"
+              src="/maxicare-logo.png"
+              alt="Maxicare"
+            />
+          ) : (
+            <BrandMark />
+          ))}
+        {usesCollapsibleSidebar && desktop && (
+          <Tooltip title={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}>
+            <IconButton
+              onClick={toggleSidebar}
+              aria-label={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+              size="small"
+            >
+              <MenuIcon />
+            </IconButton>
+          </Tooltip>
+        )}
       </Toolbar>
       <Divider />
       <List
@@ -90,44 +157,68 @@ function AuthenticatedLayout() {
           const Icon = item.icon
           const selected = isItemActive(item.path)
 
-          return (
+          const navigationButton = (
             <ListItemButton
               key={item.path}
               component={RouterLink}
               to={item.path}
               selected={selected}
               onClick={() => setMobileOpen(false)}
-              sx={{ mb: 0.5, borderRadius: 2.5 }}
+              sx={{
+                mb: 0.5,
+                minHeight: 44,
+                justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                borderRadius: 2.5,
+                px: sidebarCollapsed ? 1 : 2,
+              }}
             >
               <ListItemIcon
                 sx={{
-                  minWidth: 42,
+                  minWidth: sidebarCollapsed ? 0 : 42,
+                  justifyContent: 'center',
                   color: selected ? 'primary.main' : 'text.secondary',
                 }}
               >
                 <Icon fontSize="small" />
               </ListItemIcon>
-              <ListItemText
-                primary={item.label}
-                primaryTypographyProps={{
-                  fontSize: 14,
-                  fontWeight: selected ? 700 : 500,
-                }}
-              />
+              {!sidebarCollapsed && (
+                <ListItemText
+                  primary={item.label}
+                  slotProps={{
+                    primary: {
+                      fontSize: 14,
+                      fontWeight: selected ? 700 : 500,
+                    },
+                  }}
+                />
+              )}
             </ListItemButton>
+          )
+
+          return sidebarCollapsed ? (
+            <Tooltip key={item.path} title={item.label} placement="right">
+              {navigationButton}
+            </Tooltip>
+          ) : (
+            navigationButton
           )
         })}
       </List>
-      <Box sx={{ mt: 'auto', px: 3, pb: 2.5 }}>
-        <Typography variant="caption" color="text.secondary">
-          Clinic Management System
-        </Typography>
-      </Box>
+      {!sidebarCollapsed && (
+        <Box className="portal-tagline" sx={{ mt: 'auto', mx: 2, mb: 2.5, p: 2 }}>
+          <Typography variant="caption" color="text.secondary">
+            {user?.role === 'patient'
+              ? 'Living your best life'
+              : 'Clinic Management System'}
+          </Typography>
+        </Box>
+      )}
     </Box>
   )
 
   return (
     <Box
+      className={`authenticated-shell authenticated-shell-${user?.role || 'user'}`}
       sx={{
         minHeight: '100vh',
         display: 'flex',
@@ -139,11 +230,25 @@ function AuthenticatedLayout() {
         color="inherit"
         elevation={0}
         sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
           borderBottom: 1,
           borderColor: 'divider',
           bgcolor: 'background.paper',
+          transition: theme.transitions.create(['width', 'margin-left'], {
+            duration: theme.transitions.duration.shorter,
+          }),
+          ...(usesCollapsibleSidebar
+            ? {
+                '@media (min-width:768px)': {
+                  width: `calc(100% - ${drawerWidth}px)`,
+                  ml: `${drawerWidth}px`,
+                },
+              }
+            : {
+                [theme.breakpoints.up('md')]: {
+                  width: `calc(100% - ${drawerWidth}px)`,
+                  ml: `${drawerWidth}px`,
+                },
+              }),
         }}
       >
         <Toolbar sx={{ minHeight: 72, px: { xs: 2, sm: 3 } }}>
@@ -152,7 +257,13 @@ function AuthenticatedLayout() {
             edge="start"
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
-            sx={{ mr: 1.5, display: { md: 'none' } }}
+            sx={{
+              mr: 1.5,
+              display: usesCollapsibleSidebar ? 'inline-flex' : { md: 'none' },
+              ...(usesCollapsibleSidebar && {
+                '@media (min-width:768px)': { display: 'none' },
+              }),
+            }}
           >
             <MenuIcon />
           </IconButton>
@@ -170,7 +281,7 @@ function AuthenticatedLayout() {
               aria-expanded={accountAnchor ? 'true' : undefined}
               sx={{ borderRadius: 3, p: 0.5 }}
             >
-              <Stack direction="row" spacing={1.25} alignItems="center">
+              <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
                 <Avatar
                   sx={{
                     width: 38,
@@ -245,12 +356,27 @@ function AuthenticatedLayout() {
         onClose={() => setMobileOpen(false)}
         ModalProps={{ keepMounted: true }}
         sx={{
-          width: { md: drawerWidth },
-          flexShrink: { md: 0 },
+          ...(usesCollapsibleSidebar
+            ? {
+                '@media (min-width:768px)': {
+                  width: drawerWidth,
+                  flexShrink: 0,
+                },
+              }
+            : {
+                [theme.breakpoints.up('md')]: {
+                  width: drawerWidth,
+                  flexShrink: 0,
+                },
+              }),
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
             borderRightColor: 'divider',
+            overflowX: 'hidden',
+            transition: theme.transitions.create('width', {
+              duration: theme.transitions.duration.shorter,
+            }),
           },
         }}
       >
@@ -259,14 +385,29 @@ function AuthenticatedLayout() {
 
       <Box
         component="main"
+        className="portal-main"
         sx={{
           flexGrow: 1,
           minWidth: 0,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
           pt: '72px',
+          transition: theme.transitions.create('width', {
+            duration: theme.transitions.duration.shorter,
+          }),
+          ...(usesCollapsibleSidebar
+            ? {
+                '@media (min-width:768px)': {
+                  width: `calc(100% - ${drawerWidth}px)`,
+                },
+              }
+            : {
+                [theme.breakpoints.up('md')]: {
+                  width: `calc(100% - ${drawerWidth}px)`,
+                },
+              }),
         }}
       >
         <Box
+          className="portal-content"
           sx={{
             width: '100%',
             maxWidth: 1280,

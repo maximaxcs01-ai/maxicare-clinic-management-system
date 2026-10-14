@@ -1,14 +1,19 @@
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import {
   Alert,
   Box,
   Button,
+  ButtonBase,
   Card,
   CardContent,
   CircularProgress,
   FormControlLabel,
+  IconButton,
   Paper,
   Radio,
   RadioGroup,
@@ -21,13 +26,14 @@ import {
 } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import DoctorAvatar from '../components/DoctorAvatar'
 import { createAppointment } from '../services/appointmentApi'
 import { getOwnPatient } from '../services/patientApi'
 import { getAvailability } from '../services/scheduleApi'
 import { getDoctors } from '../services/doctorApi'
 import { getServices } from '../services/serviceApi'
 
-const STEPS = ['Service', 'Doctor', 'Date & time', 'Review']
+const STEPS = ['Service', 'Doctor', 'Schedule', 'Details', 'Review']
 const getManilaDate = () => {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
@@ -49,6 +55,41 @@ const addDays = (date, days) => {
   return next.toISOString().slice(0, 10)
 }
 
+const getMonthStart = (date) => `${date.slice(0, 7)}-01`
+
+const shiftMonth = (monthStart, amount) => {
+  const [year, month] = monthStart.split('-').map(Number)
+  const next = new Date(Date.UTC(year, month - 1 + amount, 1))
+  return next.toISOString().slice(0, 10)
+}
+
+const getCalendarDays = (monthStart) => {
+  const [year, month] = monthStart.split('-').map(Number)
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay()
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
+
+  return [
+    ...Array.from({ length: firstWeekday }, (_, index) => ({
+      key: `empty-${index}`,
+    })),
+    ...Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1
+      return {
+        key: `${year}-${month}-${day}`,
+        day,
+        date: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+      }
+    }),
+  ]
+}
+
+const formatMonth = (monthStart) =>
+  new Intl.DateTimeFormat('en-PH', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${monthStart}T00:00:00.000Z`))
+
 const formatDate = (date) =>
   new Intl.DateTimeFormat('en-PH', {
     dateStyle: 'full',
@@ -66,6 +107,7 @@ function BookAppointment() {
   const navigate = useNavigate()
   const submitLock = useRef(false)
   const today = getManilaDate()
+  const maximumDate = addDays(today, 60)
   const [activeStep, setActiveStep] = useState(0)
   const [services, setServices] = useState([])
   const [doctors, setDoctors] = useState([])
@@ -73,6 +115,7 @@ function BookAppointment() {
   const [selectedServiceId, setSelectedServiceId] = useState('')
   const [selectedDoctorId, setSelectedDoctorId] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
+  const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(today))
   const [selectedTime, setSelectedTime] = useState('')
   const [reasonForVisit, setReasonForVisit] = useState('')
   const [slots, setSlots] = useState([])
@@ -85,6 +128,9 @@ function BookAppointment() {
 
   const selectedService = services.find((service) => service._id === selectedServiceId)
   const selectedDoctor = doctors.find((doctor) => doctor._id === selectedDoctorId)
+  const calendarDays = getCalendarDays(calendarMonth)
+  const canShowPreviousMonth = calendarMonth > getMonthStart(today)
+  const canShowNextMonth = calendarMonth < getMonthStart(maximumDate)
 
   useEffect(() => {
     let active = true
@@ -169,6 +215,7 @@ function BookAppointment() {
     setSelectedDoctorId('')
     setSelectedDate('')
     setSelectedTime('')
+    setCalendarMonth(getMonthStart(today))
     setDoctors([])
     setSlots([])
     setAvailabilityError('')
@@ -181,6 +228,7 @@ function BookAppointment() {
     setSelectedDoctorId(doctorId)
     setSelectedDate('')
     setSelectedTime('')
+    setCalendarMonth(getMonthStart(today))
     setSlots([])
     setAvailabilityError('')
     setActiveStep(1)
@@ -204,6 +252,7 @@ function BookAppointment() {
           slots.some((slot) => slot.time === selectedTime && slot.available),
       )
     }
+    if (activeStep === 3) return true
     return false
   }
 
@@ -252,7 +301,7 @@ function BookAppointment() {
   }
 
   return (
-    <Box component="section" sx={{ width: '100%' }}>
+    <Box component="section" className="patient-page booking-page" sx={{ width: '100%' }}>
       <Stack spacing={0.5} sx={{ mb: 3 }}>
         <Typography variant="h4">Book Appointment</Typography>
         <Typography color="text.secondary">
@@ -266,7 +315,7 @@ function BookAppointment() {
         </Alert>
       )}
 
-      <Paper sx={{ width: '100%', p: { xs: 2, sm: 3 }, border: 1, borderColor: 'divider' }}>
+      <Paper className="booking-shell" sx={{ width: '100%', p: { xs: 2, sm: 3 }, border: 1, borderColor: 'divider' }}>
         <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
           {STEPS.map((label) => (
             <Step key={label}>
@@ -285,7 +334,7 @@ function BookAppointment() {
                 value={selectedServiceId}
                 onChange={(event) => selectService(event.target.value)}
               >
-                <Stack spacing={1.5}>
+                <Box className="booking-service-grid">
                   {services.map((service) => (
                     <Card
                       key={service._id}
@@ -293,6 +342,10 @@ function BookAppointment() {
                       sx={{
                         borderColor:
                           selectedServiceId === service._id ? 'primary.main' : 'divider',
+                        bgcolor:
+                          selectedServiceId === service._id
+                            ? 'rgba(37, 99, 166, 0.05)'
+                            : 'background.paper',
                       }}
                     >
                       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -300,8 +353,13 @@ function BookAppointment() {
                           value={service._id}
                           control={<Radio />}
                           label={
-                            <Box>
-                              <Typography fontWeight={700}>{service.name}</Typography>
+                            <Box sx={{ width: '100%', minWidth: 0 }}>
+                              <Stack direction="row" justifyContent="space-between" gap={1}>
+                                <Typography fontWeight={700}>{service.name}</Typography>
+                                {selectedServiceId === service._id && (
+                                  <CheckCircleOutlinedIcon color="primary" fontSize="small" />
+                                )}
+                              </Stack>
                               <Typography variant="body2" color="text.secondary">
                                 {service.description}
                               </Typography>
@@ -318,7 +376,7 @@ function BookAppointment() {
                       </CardContent>
                     </Card>
                   ))}
-                </Stack>
+                </Box>
               </RadioGroup>
             )}
           </Stack>
@@ -340,31 +398,58 @@ function BookAppointment() {
                 value={selectedDoctorId}
                 onChange={(event) => selectDoctor(event.target.value)}
               >
-                <Stack spacing={1.5}>
+                <Stack spacing={1.25}>
                   {doctors.map((doctor) => (
                     <Card
                       key={doctor._id}
+                      className="booking-doctor-card"
                       variant="outlined"
                       sx={{
                         borderColor:
                           selectedDoctorId === doctor._id ? 'primary.main' : 'divider',
+                        bgcolor:
+                          selectedDoctorId === doctor._id
+                            ? 'rgba(37, 99, 166, 0.05)'
+                            : 'background.paper',
                       }}
                     >
-                      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                      <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
                         <FormControlLabel
+                          className="booking-doctor-option"
                           value={doctor._id}
-                          control={<Radio />}
+                          control={<Radio className="booking-doctor-radio" />}
+                          labelPlacement="start"
                           label={
-                            <Box>
-                              <Typography fontWeight={700}>
-                                Dr. {doctor.firstName} {doctor.lastName}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {doctor.specialization}
-                              </Typography>
-                            </Box>
+                            <Stack className="booking-doctor-details" direction="row" spacing={2} alignItems="center">
+                              <DoctorAvatar
+                                className="booking-doctor-avatar"
+                                imageUrl={doctor.profileImage?.url}
+                                firstName={doctor.firstName}
+                                lastName={doctor.lastName}
+                                size={96}
+                              />
+                              <Box sx={{ minWidth: 0, flex: 1 }}>
+                                <Typography className="booking-doctor-name" fontWeight={700}>
+                                  Dr. {doctor.firstName} {doctor.lastName}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {doctor.specialization || 'Medical Doctor'}
+                                </Typography>
+                                {selectedService && (
+                                  <Typography className="booking-doctor-service" variant="caption">
+                                    {selectedService.name}
+                                  </Typography>
+                                )}
+                              </Box>
+                              {selectedService?.fee != null && (
+                                <Typography className="booking-doctor-fee" fontWeight={700}>
+                                  ₱{Number(selectedService.fee).toLocaleString('en-PH', {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </Typography>
+                              )}
+                            </Stack>
                           }
-                          sx={{ m: 0, width: '100%' }}
                         />
                       </CardContent>
                     </Card>
@@ -378,21 +463,66 @@ function BookAppointment() {
         {activeStep === 2 && (
           <Stack spacing={2.5}>
             <Typography variant="h6">Choose a date and available time</Typography>
-            <TextField
-              label="Appointment date"
-              type="date"
-              value={selectedDate}
-              onChange={(event) => selectDate(event.target.value)}
-              inputProps={{ min: today, max: addDays(today, 60) }}
-              InputLabelProps={{ shrink: true }}
-              sx={{ maxWidth: 340 }}
-            />
-            {selectedDate && (
-              <Box>
+            <Box className="booking-schedule-grid">
+              <Paper variant="outlined" className="booking-calendar-panel">
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <IconButton
+                    aria-label="Previous month"
+                    disabled={!canShowPreviousMonth}
+                    onClick={() => setCalendarMonth((month) => shiftMonth(month, -1))}
+                  >
+                    <ChevronLeftIcon />
+                  </IconButton>
+                  <Typography fontWeight={750}>{formatMonth(calendarMonth)}</Typography>
+                  <IconButton
+                    aria-label="Next month"
+                    disabled={!canShowNextMonth}
+                    onClick={() => setCalendarMonth((month) => shiftMonth(month, 1))}
+                  >
+                    <ChevronRightIcon />
+                  </IconButton>
+                </Stack>
+                <Box className="booking-calendar-weekdays" aria-hidden="true">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                    <Typography key={day} variant="caption">{day}</Typography>
+                  ))}
+                </Box>
+                <Box className="booking-calendar-grid" role="grid" aria-label="Appointment date">
+                  {calendarDays.map((calendarDay) =>
+                    calendarDay.date ? (
+                      <ButtonBase
+                        key={calendarDay.key}
+                        className={`booking-calendar-day${
+                          selectedDate === calendarDay.date ? ' is-selected' : ''
+                        }${calendarDay.date === today ? ' is-today' : ''}`}
+                        disabled={
+                          calendarDay.date < today || calendarDay.date > maximumDate
+                        }
+                        onClick={() => selectDate(calendarDay.date)}
+                        aria-label={formatDate(calendarDay.date)}
+                        aria-pressed={selectedDate === calendarDay.date}
+                        role="gridcell"
+                      >
+                        {calendarDay.day}
+                      </ButtonBase>
+                    ) : (
+                      <span key={calendarDay.key} aria-hidden="true" />
+                    ),
+                  )}
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  Select a date within the next 60 days.
+                </Typography>
+              </Paper>
+              <Paper variant="outlined" className="booking-slots-panel">
                 <Typography fontWeight={700} sx={{ mb: 1.5 }}>
                   Available 30-minute slots
                 </Typography>
-                {slotsLoading ? (
+                {!selectedDate ? (
+                  <Typography color="text.secondary" variant="body2">
+                    Select a date to view real-time availability.
+                  </Typography>
+                ) : slotsLoading ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <CircularProgress size={20} />
                     <Typography color="text.secondary">Loading availability...</Typography>
@@ -404,7 +534,7 @@ function BookAppointment() {
                     No available appointment slots for this date.
                   </Alert>
                 ) : (
-                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                  <Box className="booking-slot-grid">
                     {slots.map((slot) => (
                       <Button
                         key={slot.time}
@@ -415,14 +545,32 @@ function BookAppointment() {
                         {formatTime(slot.time)}
                       </Button>
                     ))}
-                  </Stack>
+                  </Box>
                 )}
-              </Box>
-            )}
+              </Paper>
+            </Box>
           </Stack>
         )}
 
-        {activeStep === 3 && selectedService && selectedDoctor && (
+        {activeStep === 3 && (
+          <Stack spacing={2}>
+            <Typography variant="h6">Visit details</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Add information that can help your care team prepare for the visit.
+            </Typography>
+            <TextField
+              label="Reason for visit (optional)"
+              value={reasonForVisit}
+              onChange={(event) => setReasonForVisit(event.target.value)}
+              multiline
+              minRows={4}
+              inputProps={{ maxLength: 1000 }}
+              helperText={`${reasonForVisit.length}/1000 characters`}
+            />
+          </Stack>
+        )}
+
+        {activeStep === 4 && selectedService && selectedDoctor && (
           <Stack spacing={2}>
             <Typography variant="h6">Review your appointment</Typography>
             <Paper variant="outlined" sx={{ p: 2.5 }}>
@@ -433,6 +581,7 @@ function BookAppointment() {
                 </Typography>
                 <Typography><strong>Date:</strong> {formatDate(selectedDate)}</Typography>
                 <Typography><strong>Time:</strong> {formatTime(selectedTime)}</Typography>
+                <Typography><strong>Reason:</strong> {reasonForVisit || 'Not provided'}</Typography>
                 <Typography>
                   <strong>Patient:</strong>{' '}
                   {[patient?.firstName, patient?.middleName, patient?.lastName]
@@ -441,15 +590,6 @@ function BookAppointment() {
                 </Typography>
               </Stack>
             </Paper>
-            <TextField
-              label="Reason for visit (optional)"
-              value={reasonForVisit}
-              onChange={(event) => setReasonForVisit(event.target.value)}
-              multiline
-              minRows={3}
-              inputProps={{ maxLength: 1000 }}
-              helperText={`${reasonForVisit.length}/1000 characters`}
-            />
             <Alert severity="info">
               Your appointment will be created with Pending status.
             </Alert>
@@ -484,7 +624,7 @@ function BookAppointment() {
               onClick={confirmBooking}
               disabled={submitting}
             >
-              {submitting ? 'Booking...' : 'Confirm Appointment'}
+              {submitting ? 'Booking...' : 'Confirm Booking'}
             </Button>
           )}
         </Stack>

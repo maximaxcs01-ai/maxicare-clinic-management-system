@@ -222,13 +222,16 @@ function DoctorConsultationWorkspace() {
   const patient = consultation.patientId
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
+    <Box component="section" className="doctor-page doctor-consultation-workspace" sx={{ width: '100%', minWidth: 0 }}>
       <Stack
+        className="doctor-page-header"
         direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'stretch', sm: 'center' }}
         spacing={2}
-        sx={{ mb: 3 }}
+        sx={{
+          mb: 3,
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+        }}
       >
         <Box>
           <Typography variant="h4">Consultation</Typography>
@@ -236,7 +239,7 @@ function DoctorConsultationWorkspace() {
             Started {formatDateTime(consultation.startedAt)}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <StatusChip status={consultation.status} />
           <Button
             disabled={prescriptionLoading}
@@ -259,7 +262,7 @@ function DoctorConsultationWorkspace() {
         </Alert>
       )}
 
-      <Stack spacing={2.5}>
+      <Stack className="doctor-consultation-sections" spacing={2.5}>
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Patient Information
@@ -456,12 +459,12 @@ function DoctorConsultationWorkspace() {
 
       {!readOnly && (
         <Stack
+          className="doctor-workspace-actions"
           direction={{ xs: 'column', sm: 'row' }}
-          justifyContent="flex-end"
           spacing={1.5}
-          sx={{ mt: 3 }}
+          sx={{ mt: 3, justifyContent: 'space-between' }}
         >
-          <Button disabled={saving} onClick={handleSaveDraft}>
+          <Button variant="outlined" disabled={saving} onClick={handleSaveDraft}>
             {saving ? 'Saving…' : 'Save Draft'}
           </Button>
           <Button

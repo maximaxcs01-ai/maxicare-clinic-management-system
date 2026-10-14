@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Paper,
+  Pagination,
   Stack,
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import StatusChip from '../../components/common/StatusChip'
 import TableState from '../../components/common/TableState'
+import DoctorAvatar from '../../components/DoctorAvatar'
 import { getDoctors } from '../../services/doctorApi'
 
 function ReceptionistDoctorsPage() {
@@ -60,11 +62,11 @@ function ReceptionistDoctorsPage() {
   const formatDoctorName = (doctor) => [doctor.firstName, doctor.middleName, doctor.lastName].filter(Boolean).join(' ')
 
   return (
-    <Box component="section">
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2} sx={{ mb: 3 }}>
+    <Box component="section" className="receptionist-page receptionist-doctors-page">
+      <Stack className="receptionist-page-header" direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ mb: 3, justifyContent: 'space-between' }}>
         <Box>
           <Typography variant="h4">Doctors</Typography>
-          <Typography color="text.secondary">Review doctor profiles and availability schedules.</Typography>
+          <Typography color="text.secondary">View doctor profiles and availability schedules.</Typography>
         </Box>
       </Stack>
 
@@ -74,7 +76,7 @@ function ReceptionistDoctorsPage() {
         </Alert>
       )}
 
-      <Paper sx={{ p: 2.5, border: 1, borderColor: 'divider' }}>
+      <Paper className="receptionist-management-panel" sx={{ p: 2.5, border: 1, borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
           <TextField
             size="small"
@@ -105,8 +107,18 @@ function ReceptionistDoctorsPage() {
               {!loading && rows.map((doctor) => (
                 <TableRow key={doctor._id} hover>
                   <TableCell>
-                    <Typography fontWeight={700}>{formatDoctorName(doctor)}</Typography>
-                    <Typography variant="body2" color="text.secondary">{doctor.email}</Typography>
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                      <DoctorAvatar
+                        imageUrl={doctor.profileImage?.url}
+                        firstName={doctor.firstName}
+                        lastName={doctor.lastName}
+                        size={60}
+                      />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography fontWeight={700}>{formatDoctorName(doctor)}</Typography>
+                        <Typography variant="body2" color="text.secondary">{doctor.email}</Typography>
+                      </Box>
+                    </Stack>
                   </TableCell>
                   <TableCell>{doctor.doctorNumber}</TableCell>
                   <TableCell>{doctor.specialization}</TableCell>
@@ -130,16 +142,15 @@ function ReceptionistDoctorsPage() {
           </Table>
         </TableContainer>
 
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pt: 2 }}>
+        <Stack direction="row" sx={{ pt: 2, justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="body2" color="text.secondary">{pagination.total} doctor(s)</Typography>
-          <Stack direction="row" spacing={1}>
-            <Button variant="outlined" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
-              Previous
-            </Button>
-            <Button variant="outlined" disabled={page >= pagination.totalPages} onClick={() => setPage((value) => Math.min(pagination.totalPages, value + 1))}>
-              Next
-            </Button>
-          </Stack>
+          <Pagination
+            page={page}
+            count={pagination.totalPages || 1}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            size="small"
+          />
         </Stack>
       </Paper>
     </Box>

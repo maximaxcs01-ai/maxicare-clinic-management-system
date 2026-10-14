@@ -77,7 +77,7 @@ function PatientMedicalHistory() {
   }
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
+    <Box component="section" className="patient-page patient-history-page" sx={{ width: '100%', minWidth: 0 }}>
       <Stack spacing={0.5} sx={{ mb: 3 }}>
         <Typography variant="h4">Medical History</Typography>
         <Typography color="text.secondary">
@@ -170,9 +170,9 @@ function PatientMedicalHistory() {
                             ? `${row.doctorId.firstName} ${row.doctorId.lastName}`
                             : '—'
                           : tab === 'prescriptions'
-                            ? row.appointmentId?.bookingType === 'walk_in'
-                              ? 'Walk-In'
-                              : 'Scheduled'
+                            ? row.doctorId
+                              ? `Dr. ${row.doctorId.firstName} ${row.doctorId.lastName}`
+                              : '—'
                             : row.doctorId
                               ? `${row.doctorId.firstName} ${row.doctorId.lastName}`
                               : '—'}

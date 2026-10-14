@@ -99,8 +99,9 @@ function Patients() {
   }
 
   return (
-    <Box component="section" sx={{ minWidth: 0 }}>
+    <Box component="section" className={user.role === 'receptionist' ? 'receptionist-page' : undefined} sx={{ minWidth: 0 }}>
       <Box
+        className={user.role === 'receptionist' ? 'receptionist-page-header' : undefined}
         sx={{
           display: 'grid',
           gridTemplateColumns: {
@@ -114,7 +115,7 @@ function Patients() {
       >
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="h4">Patients</Typography>
-          <Typography color="text.secondary">Search and manage clinic patient records.</Typography>
+          <Typography color="text.secondary">Search and manage patient records.</Typography>
         </Box>
         {canManage && (
           <Button
@@ -131,17 +132,24 @@ function Patients() {
               fontWeight: 600,
             }}
           >
-            Add Patient
+            Register New Patient
           </Button>
         )}
       </Box>
-      <Paper sx={{ p: 2.5, border: 1, borderColor: 'divider' }}>
+      <Paper className={user.role === 'receptionist' ? 'receptionist-management-panel' : undefined} sx={{ p: 2.5, border: 1, borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
           <TextField size="small" fullWidth label="Search patient number, name, email, or mobile" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
           <FormControl size="small" sx={{ minWidth: 190 }}><InputLabel>Portal status</InputLabel><Select label="Portal status" value={portalStatus} onChange={(e) => { setPortalStatus(e.target.value); setPage(1) }}><MenuItem value="">All statuses</MenuItem><MenuItem value="not_activated">Not activated</MenuItem><MenuItem value="invited">Invited</MenuItem><MenuItem value="active">Active</MenuItem><MenuItem value="inactive">Inactive (legacy)</MenuItem></Select></FormControl>
+          <Button
+            variant="outlined"
+            disabled={!search && !portalStatus}
+            onClick={() => { setSearch(''); setPortalStatus(''); setPage(1) }}
+          >
+            Reset
+          </Button>
         </Stack>
-        <TableContainer><Table><TableHead><TableRow><TableCell>Patient</TableCell><TableCell>Sex</TableCell><TableCell>Mobile</TableCell><TableCell>Email</TableCell><TableCell>Portal</TableCell>{canManage && <TableCell align="right">Actions</TableCell>}</TableRow></TableHead><TableBody><TableState loading={loading} empty={!rows.length} colSpan={canManage ? 6 : 5} />{!loading && rows.map((patient) => <TableRow key={patient._id} hover><TableCell><Typography fontWeight={700}>{patient.firstName} {patient.middleName} {patient.lastName} {patient.suffix}</Typography><Typography variant="body2" color="text.secondary">{patient.patientNumber || 'Number pending'}</Typography></TableCell><TableCell>{patient.sex || patient.gender || '—'}</TableCell><TableCell>{patient.mobileNumber || patient.contactNumber || '—'}</TableCell><TableCell>{patient.email}</TableCell><TableCell><StatusChip status={patient.portalStatus} /></TableCell>{canManage && <TableCell align="right"><Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={0.5}>{!patient.userId && ['not_activated', 'inactive'].includes(patient.portalStatus) && patient.email && <Button size="small" disabled={activationLoading} onClick={() => setActivationConfirm(patient)}>Activate Portal</Button>}{patient.portalStatus === 'invited' && <Button size="small" disabled={activationLoading} onClick={() => resendActivation(patient)}>Resend Invitation</Button>}<Tooltip title="Edit"><IconButton component={RouterLink} to={`${portalBase}/edit/${patient._id}`}><EditOutlinedIcon /></IconButton></Tooltip>{canDelete && <Tooltip title="Delete"><IconButton color="error" onClick={() => setConfirm(patient)}><DeleteOutlineIcon /></IconButton></Tooltip>}</Stack></TableCell>}</TableRow>)}</TableBody></Table></TableContainer>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pt: 2 }}><Typography variant="body2" color="text.secondary">{pagination.total} patient(s)</Typography><Pagination page={page} count={pagination.totalPages} onChange={(_, value) => setPage(value)} color="primary" /></Stack>
+        <TableContainer><Table><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Patient No.</TableCell><TableCell>Contact</TableCell><TableCell>Email</TableCell><TableCell>Portal Status</TableCell>{canManage && <TableCell align="right">Actions</TableCell>}</TableRow></TableHead><TableBody><TableState loading={loading} empty={!rows.length} colSpan={canManage ? 6 : 5} />{!loading && rows.map((patient) => <TableRow key={patient._id} hover><TableCell><Typography fontWeight={700}>{patient.firstName} {patient.middleName} {patient.lastName} {patient.suffix}</Typography></TableCell><TableCell>{patient.patientNumber || 'Number pending'}</TableCell><TableCell>{patient.mobileNumber || patient.contactNumber || '—'}</TableCell><TableCell>{patient.email}</TableCell><TableCell><StatusChip status={patient.portalStatus} /></TableCell>{canManage && <TableCell align="right"><Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>{!patient.userId && ['not_activated', 'inactive'].includes(patient.portalStatus) && patient.email && <Button size="small" disabled={activationLoading} onClick={() => setActivationConfirm(patient)}>Activate Portal</Button>}{patient.portalStatus === 'invited' && <Button size="small" disabled={activationLoading} onClick={() => resendActivation(patient)}>Resend Invitation</Button>}<Tooltip title="Edit"><IconButton component={RouterLink} to={`${portalBase}/edit/${patient._id}`}><EditOutlinedIcon /></IconButton></Tooltip>{canDelete && <Tooltip title="Delete"><IconButton color="error" onClick={() => setConfirm(patient)}><DeleteOutlineIcon /></IconButton></Tooltip>}</Stack></TableCell>}</TableRow>)}</TableBody></Table></TableContainer>
+        <Stack direction="row" spacing={2} sx={{ pt: 2, justifyContent: 'space-between', alignItems: 'center' }}><Typography variant="body2" color="text.secondary">{pagination.total} patient(s)</Typography><Pagination page={page} count={pagination.totalPages} onChange={(_, value) => setPage(value)} color="primary" /></Stack>
       </Paper>
       <ConfirmDialog open={Boolean(confirm)} title="Delete patient?" message={confirm ? `Delete ${confirm.firstName} ${confirm.lastName}? Portal-linked and protected records cannot be deleted.` : ''} loading={deleting} onCancel={() => setConfirm(null)} onConfirm={remove} />
       <ConfirmDialog

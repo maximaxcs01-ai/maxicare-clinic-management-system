@@ -36,6 +36,7 @@ import { useNavigate } from 'react-router-dom'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import StatusChip from '../../components/common/StatusChip'
 import TableState from '../../components/common/TableState'
+import DoctorAvatar from '../../components/DoctorAvatar'
 import {
   createDoctor,
   deleteDoctor,
@@ -299,12 +300,22 @@ function DoctorsManagement() {
                 rows.map((doctor) => (
                   <TableRow key={doctor._id} hover>
                     <TableCell>
-                      <Typography fontWeight={700}>
-                        {doctor.firstName} {doctor.middleName} {doctor.lastName}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {doctor.doctorNumber} · {doctor.email}
-                      </Typography>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <DoctorAvatar
+                          imageUrl={doctor.profileImage?.url}
+                          firstName={doctor.firstName}
+                          lastName={doctor.lastName}
+                          size={42}
+                        />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography fontWeight={700}>
+                            {doctor.firstName} {doctor.middleName} {doctor.lastName}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {doctor.doctorNumber} · {doctor.email}
+                          </Typography>
+                        </Box>
+                      </Stack>
                     </TableCell>
                     <TableCell>{doctor.specialization}</TableCell>
                     <TableCell>{doctor.licenseNumber}</TableCell>
@@ -387,6 +398,24 @@ function DoctorsManagement() {
         <DialogTitle>{dialog?._id ? 'Edit Doctor' : 'Add Doctor'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
+            {dialog?._id && (
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <DoctorAvatar
+                  imageUrl={dialog.profileImage?.url}
+                  firstName={dialog.firstName}
+                  lastName={dialog.lastName}
+                  size={52}
+                />
+                <Box>
+                  <Typography fontWeight={700}>
+                    {dialog.firstName} {dialog.lastName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Doctor profile photo
+                  </Typography>
+                </Box>
+              </Stack>
+            )}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
                 required

@@ -1,0 +1,446 @@
+/* Phase 14D doctor portal presentation */
+.authenticated-shell-doctor {
+  background: #f4f7fa;
+}
+
+.authenticated-shell-doctor .MuiDrawer-paper {
+  border-right: 1px solid #e2e9ef;
+  background: #fff;
+}
+
+.authenticated-shell-doctor .portal-drawer-content .MuiListItemButton-root.Mui-selected {
+  color: #155f9e;
+  background: #edf5fb;
+}
+
+.authenticated-shell-doctor .portal-drawer-content .MuiListItemButton-root.Mui-selected::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #1769aa;
+  content: '';
+}
+
+.authenticated-shell-doctor .portal-tagline .MuiTypography-root {
+  color: #24766d;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.authenticated-shell-doctor .MuiAppBar-root {
+  border-color: #e2e9ef;
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.authenticated-shell-doctor .portal-content {
+  max-width: 1280px;
+}
+
+.doctor-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.doctor-page-header {
+  margin-bottom: 28px;
+}
+
+.doctor-page-header .MuiTypography-h4 {
+  margin-bottom: 5px;
+  color: #123653;
+  font-weight: 750;
+}
+
+.doctor-metric-card,
+.doctor-dashboard-panel,
+.doctor-filter-panel,
+.doctor-management-panel,
+.doctor-profile-card,
+.doctor-patient-record .MuiPaper-root,
+.doctor-consultation-workspace .MuiPaper-root,
+.doctor-prescription-workspace .MuiPaper-root {
+  border: 1px solid #dfe7ed;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(17, 52, 78, 0.055);
+}
+
+.doctor-metric-card {
+  height: 100%;
+  min-height: 142px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 22px 24px;
+}
+
+.doctor-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.doctor-metric-card .MuiTypography-h5 {
+  margin-top: 12px;
+  color: #123653;
+  font-size: 1.55rem;
+  font-weight: 750;
+}
+
+.doctor-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.doctor-dashboard-panel {
+  min-width: 0;
+  padding: 24px;
+}
+
+.doctor-patient-avatar,
+.doctor-record-avatar,
+.doctor-patient-list-avatar {
+  color: #155f9e !important;
+  background: #dfeef8 !important;
+  font-weight: 750;
+}
+
+.doctor-patient-avatar {
+  width: 56px !important;
+  height: 56px !important;
+}
+
+.doctor-record-avatar {
+  width: 58px !important;
+  height: 58px !important;
+  flex: 0 0 auto;
+}
+
+.doctor-patient-list-avatar {
+  width: 44px !important;
+  height: 44px !important;
+  flex: 0 0 auto;
+}
+
+.doctor-empty-state {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  padding: 22px;
+  border: 1px dashed #cfdbe3;
+  border-radius: 11px;
+  background: #fafcfd;
+  text-align: center;
+}
+
+.doctor-schedule-list {
+  margin-top: 16px;
+}
+
+.doctor-schedule-list > .MuiStack-root {
+  padding: 13px 0;
+}
+
+.doctor-list-divider {
+  height: 1px;
+  background: #e5ebef;
+}
+
+.doctor-filter-panel {
+  margin-bottom: 20px;
+  padding: 20px;
+}
+
+.doctor-management-panel {
+  overflow: hidden;
+}
+
+.doctor-page .MuiTableHead-root {
+  background: #f7fafc;
+}
+
+.doctor-page .MuiTableCell-head {
+  color: #526a7d;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.doctor-page .MuiTableCell-body {
+  border-color: #edf1f4;
+}
+
+.doctor-page .MuiTableRow-hover:hover {
+  background: #f8fbfd !important;
+}
+
+.doctor-consultation-sections {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px !important;
+  align-items: start;
+}
+
+.doctor-consultation-sections > .MuiPaper-root:first-child,
+.doctor-consultation-sections > .MuiPaper-root:nth-child(2),
+.doctor-consultation-sections > .MuiPaper-root:last-child {
+  grid-column: 1 / -1;
+}
+
+.doctor-workspace-actions {
+  padding-top: 20px;
+  border-top: 1px solid #dfe7ed;
+}
+
+.doctor-profile-card {
+  max-width: 900px;
+}
+
+.doctor-profile-card .doctor-avatar {
+  border: 1px solid #d7e2e9;
+  background: #dfeef8;
+}
+
+.doctor-profile-card .doctor-avatar img {
+  object-fit: cover;
+}
+
+.doctor-schedule-page .MuiPaper-root {
+  border-radius: 13px;
+}
+
+.doctor-calendar-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.doctor-calendar-card,
+.doctor-calendar-side-panel {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid #dfe7ed;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 16px rgba(17, 52, 78, 0.055) !important;
+}
+
+.doctor-calendar-weekdays,
+.doctor-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.doctor-calendar-weekdays {
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+.doctor-calendar-weekdays .MuiTypography-root {
+  color: #6d8191;
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.doctor-calendar-day {
+  min-width: 0 !important;
+  min-height: 68px;
+  display: flex !important;
+  flex-direction: column;
+  gap: 7px;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  color: #234157 !important;
+  font-weight: 700 !important;
+}
+
+.doctor-calendar-day:hover {
+  border-color: #b8cfdf !important;
+  background: #f4f9fc !important;
+}
+
+.doctor-calendar-day.is-today {
+  border-color: #8eb6d2 !important;
+  background: #f4f9fc;
+}
+
+.doctor-calendar-day.is-selected {
+  border-color: #1769aa !important;
+  color: #fff !important;
+  background: #1769aa !important;
+}
+
+.doctor-calendar-indicator,
+.legend-dot,
+.schedule-status-dot {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  border-radius: 50%;
+  background: #2b83c6;
+}
+
+.doctor-calendar-day.is-unavailable .doctor-calendar-indicator,
+.legend-dot.is-unavailable {
+  background: #c94a4a;
+}
+
+.doctor-calendar-day.is-selected .doctor-calendar-indicator {
+  background: #fff;
+}
+
+.legend-dot {
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+
+.schedule-status-dot.is-active {
+  background: #2f8f73;
+}
+
+.schedule-status-dot.is-inactive {
+  background: #9aa8b2;
+}
+
+.doctor-calendar-legend {
+  margin-top: 20px;
+  color: #63798a;
+}
+
+.doctor-selected-availability {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #e0e8ed;
+  border-radius: 11px;
+  background: #f9fbfc;
+}
+
+.doctor-calendar-appointment {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #edf1f4;
+}
+
+.doctor-calendar-appointment:last-child {
+  border-bottom: 0;
+}
+
+.doctor-calendar-empty {
+  margin-top: 14px;
+  padding: 28px 16px;
+  border: 1px dashed #cfdae2;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.doctor-weekly-day {
+  padding: 18px;
+  border: 1px solid #e0e8ed;
+  border-radius: 11px;
+}
+
+@media (max-width: 1100px) {
+  .doctor-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .doctor-calendar-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 899px) {
+  .authenticated-shell-doctor .portal-content {
+    padding: 22px 18px 32px;
+  }
+
+  .doctor-dashboard-grid,
+  .doctor-consultation-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-consultation-sections > .MuiPaper-root {
+    grid-column: auto !important;
+  }
+
+  .doctor-page .MuiTableContainer-root {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .doctor-page-header {
+    margin-bottom: 22px;
+  }
+
+  .doctor-metric-card,
+  .doctor-dashboard-panel,
+  .doctor-filter-panel {
+    padding: 18px;
+  }
+
+  .doctor-workspace-actions .MuiButton-root,
+  .doctor-page-header .MuiButton-root {
+    min-height: 44px;
+  }
+
+  .doctor-current-patient > .MuiStack-root {
+    flex-wrap: wrap;
+  }
+
+  .doctor-current-patient > .MuiStack-root > .MuiButton-root {
+    width: 100%;
+  }
+
+  .doctor-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-calendar-card,
+  .doctor-calendar-side-panel {
+    padding: 18px;
+  }
+
+  .doctor-calendar-weekdays,
+  .doctor-calendar-grid {
+    gap: 2px;
+  }
+
+  .doctor-calendar-day {
+    min-height: 48px;
+    padding: 5px !important;
+  }
+
+  .doctor-calendar-appointment {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .doctor-calendar-appointment .MuiChip-root {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 420px) {
+  .authenticated-shell-doctor .portal-content {
+    padding: 18px 14px 28px;
+  }
+
+  .doctor-page-header .MuiTypography-h4 {
+    font-size: 1.65rem;
+  }
+}

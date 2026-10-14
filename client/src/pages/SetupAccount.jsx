@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined'
+import AuthPage from '../components/AuthPage'
 import api from '../services/api'
 
 function SetupAccount() {
@@ -106,40 +108,44 @@ function SetupAccount() {
 
   if (validating) {
     return (
-      <main className="page-shell">
-        <section className="auth-card">
-          <h1>Account setup</h1>
+      <AuthPage>
+          <div className="auth-heading">
+            <span className="auth-icon-badge"><PersonAddAlt1OutlinedIcon /></span>
+            <h1>Account setup</h1>
+          </div>
           <p className="subtitle">Verifying your invitation link...</p>
-        </section>
-      </main>
+      </AuthPage>
     )
   }
 
   if (error) {
     return (
-      <main className="page-shell">
-        <section className="auth-card">
-          <h1>Account setup</h1>
+      <AuthPage>
+          <div className="auth-heading">
+            <span className="auth-icon-badge"><PersonAddAlt1OutlinedIcon /></span>
+            <h1>Account setup</h1>
+          </div>
           <div className="message error-message">{error}</div>
           <p className="auth-link">
             <Link to="/login">Return to login</Link>
           </p>
-        </section>
-      </main>
+      </AuthPage>
     )
   }
 
   return (
-    <main className="page-shell">
-      <section className="auth-card">
-        <h1>Set up your account</h1>
-        <p className="subtitle">
-          Create a password for {emailLabel || 'your clinic account'}.
-        </p>
+    <AuthPage>
+        <div className="auth-heading">
+          <span className="auth-icon-badge"><PersonAddAlt1OutlinedIcon /></span>
+          <h1>Set up your account</h1>
+          <p className="subtitle">
+            Create a password for {emailLabel || 'your clinic account'}.
+          </p>
+        </div>
 
-        {error && <div className="message error-message">{error}</div>}
+        {error && <div className="message error-message" role="alert">{error}</div>}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <div className="auth-field">
             <label htmlFor="new-password">New Password *</label>
             <input
@@ -176,12 +182,11 @@ function SetupAccount() {
             {confirmError && <p className="field-error">{confirmError}</p>}
           </div>
 
-          <button type="submit" disabled={loading}>
+          <button className="auth-submit-button" type="submit" disabled={loading}>
             {loading ? 'Setting up account...' : 'Create Password'}
           </button>
         </form>
-      </section>
-    </main>
+    </AuthPage>
   )
 }
 
