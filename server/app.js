@@ -15,6 +15,8 @@ const patientRoutes = require("./routes/patientRoutes");
 const serviceRoutes = require("./routes/serviceRoutes");
 const doctorRoutes = require("./routes/doctorRoutes");
 const userRoutes = require("./routes/userRoutes");
+const scheduleRoutes = require("./routes/scheduleRoutes");
+const availabilityRoutes = require("./routes/availabilityRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -76,8 +78,10 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/services", serviceRoutes);
+app.use("/api/doctors", scheduleRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/availability", availabilityRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

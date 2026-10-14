@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 const Doctor = require("../models/Doctor");
+const DoctorSchedule = require("../models/DoctorSchedule");
 const Service = require("../models/Service");
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
@@ -43,6 +44,9 @@ const getDoctor = async (id, role) => {
   if (role === "patient") filter.status = "active";
   return Doctor.findOne(filter).populate("serviceIds", "name status");
 };
+
+const getMyDoctor = (userId) =>
+  Doctor.findOne({ userId }).populate("serviceIds", "name status");
 
 const createDoctor = async (data) => {
   const password = await bcrypt.hash(data.temporaryPassword, 10);
@@ -96,6 +100,7 @@ const deleteDoctor = async (id) => {
       const doctor = await Doctor.findById(id).session(session);
       if (!doctor) return;
       await Doctor.deleteOne({ _id: doctor._id }, { session });
+      await DoctorSchedule.deleteOne({ doctorId: doctor._id }, { session });
       await User.deleteOne({ _id: doctor.userId, role: "doctor" }, { session });
       deleted = true;
     });
@@ -103,4 +108,4 @@ const deleteDoctor = async (id) => {
   return deleted;
 };
 
-module.exports = { listDoctors, getDoctor, createDoctor, updateDoctor, deleteDoctor };
+module.exports = { listDoctors, getDoctor, getMyDoctor, createDoctor, updateDoctor, deleteDoctor };
