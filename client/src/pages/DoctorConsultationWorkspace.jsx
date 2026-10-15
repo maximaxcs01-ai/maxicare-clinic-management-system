@@ -11,7 +11,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import StatusChip from '../components/common/StatusChip'
@@ -25,6 +25,7 @@ import {
   createPrescription,
   getPrescriptionForConsultation,
 } from '../services/prescriptionApi'
+import { openPrescriptionAfterSaving } from '../utils/openPrescriptionAfterSaving'
 
 const VITAL_FIELDS = [
   ['systolic', 'Systolic BP', 'mmHg'],
@@ -91,6 +92,8 @@ function DoctorConsultationWorkspace() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [prescriptionLoading, setPrescriptionLoading] = useState(false)
   const [prescription, setPrescription] = useState(null)
+  const [prescriptionAction, setPrescriptionAction] = useState(false)
+  const prescriptionActionRef = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -128,9 +131,8 @@ function DoctorConsultationWorkspace() {
     setDraft((current) => ({ ...current, [field]: value }))
   }
 
-  const handleSaveDraft = async () => {
+  const saveCurrentDraft = async () => {
     setSaving(true)
-    setError('')
     try {
       const response = await saveConsultationDraft(
         id,
@@ -138,14 +140,36 @@ function DoctorConsultationWorkspace() {
       )
       setConsultation(response.data.data)
       setDraft(toDraft(response.data.data))
-      setNotice({ severity: 'success', message: response.data.message })
+      return response.data.data
     } catch (requestError) {
       setError(
         requestError.response?.data?.message ||
-          'Unable to save the consultation draft.',
+          'Unable to save consultation. Please try again.',
       )
+      throw requestError
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSaveDraft = async () => {
+    if (prescriptionActionRef.current || saving) return
+    prescriptionActionRef.current = true
+    setPrescriptionAction(true)
+    setError('')
+    try {
+      const savedConsultation = await saveCurrentDraft()
+      if (savedConsultation) {
+        setNotice({
+          severity: 'success',
+          message: 'Consultation draft saved.',
+        })
+      }
+    } catch {
+      // saveCurrentDraft sets the visible error and preserves the local draft.
+    } finally {
+      prescriptionActionRef.current = false
+      setPrescriptionAction(false)
     }
   }
 
@@ -173,31 +197,44 @@ function DoctorConsultationWorkspace() {
   }
 
   const handleOpenPrescription = async () => {
+    if (
+      prescriptionActionRef.current ||
+      saving ||
+      prescriptionLoading
+    ) return
+    prescriptionActionRef.current = true
+    setPrescriptionAction(true)
     setPrescriptionLoading(true)
+    setError('')
     try {
-      let prescription
+      let saveFailed = false
       try {
-        const existing = await getPrescriptionForConsultation(id)
-        prescription = existing.data.data
+        const openedPrescription = await openPrescriptionAfterSaving({
+          saveDraft: async () => {
+            if (readOnly) return consultation
+            try {
+              return await saveCurrentDraft()
+            } catch (requestError) {
+              saveFailed = true
+              throw requestError
+            }
+          },
+          getPrescription: () => getPrescriptionForConsultation(id),
+          createPrescription: () => createPrescription(id),
+        })
+        navigate(`/doctor/prescriptions/${openedPrescription._id}`)
       } catch (requestError) {
-        if (requestError.response?.status !== 404) throw requestError
-        try {
-          const created = await createPrescription(id)
-          prescription = created.data.data
-        } catch (createError) {
-          if (createError.response?.status !== 409) throw createError
-          const existing = await getPrescriptionForConsultation(id)
-          prescription = existing.data.data
+        if (!saveFailed) {
+          setError(
+            requestError.response?.data?.message ||
+              'Unable to open a prescription for this consultation.',
+          )
         }
       }
-      navigate(`/doctor/prescriptions/${prescription._id}`)
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          'Unable to open a prescription for this consultation.',
-      )
     } finally {
       setPrescriptionLoading(false)
+      prescriptionActionRef.current = false
+      setPrescriptionAction(false)
     }
   }
 
@@ -279,10 +316,14 @@ function DoctorConsultationWorkspace() {
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <StatusChip status={consultation.status} />
           <Button
-            disabled={prescriptionLoading}
+            disabled={prescriptionAction || saving || prescriptionLoading}
             onClick={handleOpenPrescription}
           >
-            {prescriptionLoading ? 'Opening…' : 'Prescription'}
+            {saving
+              ? 'Saving…'
+              : prescriptionLoading
+                ? 'Opening…'
+                : 'Prescription'}
           </Button>
           <Button
             startIcon={<ArrowBackOutlinedIcon />}
@@ -541,13 +582,19 @@ function DoctorConsultationWorkspace() {
               <>
                 <Button
                   variant="outlined"
-                  disabled={prescriptionLoading}
+                  disabled={prescriptionAction || saving || prescriptionLoading}
                   onClick={handleOpenPrescription}
                 >
-                  {prescription ? 'Open Prescription' : 'Create Prescription'}
+                  {saving
+                    ? 'Saving…'
+                    : prescriptionLoading
+                      ? 'Opening…'
+                      : prescription
+                        ? 'Open Prescription'
+                        : 'Create Prescription'}
                 </Button>
                 <Button
-                  disabled={prescriptionLoading}
+                  disabled={prescriptionAction || saving || prescriptionLoading}
                   onClick={handleNoPrescriptionNeeded}
                 >
                   No Prescription Needed
@@ -575,7 +622,11 @@ function DoctorConsultationWorkspace() {
           spacing={1.5}
           sx={{ mt: 3, justifyContent: 'space-between' }}
         >
-          <Button variant="outlined" disabled={saving} onClick={handleSaveDraft}>
+          <Button
+            variant="outlined"
+            disabled={saving || prescriptionAction}
+            onClick={handleSaveDraft}
+          >
             {saving ? 'Saving…' : 'Save Draft'}
           </Button>
           <Button
