@@ -1,5 +1,6 @@
 const service = require("../services/userService");
 const { recordRequestAudit } = require("../services/auditService");
+const profileService = require("../services/userProfileService");
 
 const listUsers = async (req, res, next) => { try { res.json(await service.listUsers(req.query)); } catch (e) { next(e); } };
 const getUser = async (req, res, next) => { try { const data = await service.getUser(req.params.id); if (!data) return res.status(404).json({ message: "User not found" }); res.json({ data }); } catch (e) { next(e); } };
@@ -9,4 +10,24 @@ const updateStatus = async (req, res, next) => { try { const previous = await se
 const updateRole = async (req, res, next) => { try { const data = await service.updateRole(req.params.id, req.validatedRole, req.user._id); if (!data) return res.status(404).json({ message: "User not found" }); res.json({ message: "User role updated successfully", data }); } catch (e) { next(e); } };
 const deleteUser = async (req, res, next) => { try { const data = await service.deleteUser(req.params.id, req.user._id); if (!data) return res.status(404).json({ message: "User not found" }); res.json({ message: "User deleted successfully" }); } catch (e) { next(e); } };
 
-module.exports = { listUsers, getUser, createUser, updateUser, updateStatus, updateRole, deleteUser };
+const updateOwnProfileImage = async (req, res, next) => {
+  try {
+    const data = await profileService.updateOwnProfileImage(
+      req.user._id,
+      req.user.role,
+      req.file
+    );
+    await recordRequestAudit(req, {
+      action: "user.profile_image_updated",
+      entityType: "User",
+      entityId: req.user._id,
+      description: "Account profile image updated.",
+      metadata: { userId: req.user._id },
+    });
+    res.json({ message: "Profile photo updated successfully", data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { listUsers, getUser, createUser, updateUser, updateStatus, updateRole, deleteUser, updateOwnProfileImage };

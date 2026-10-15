@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    profileImage: {
+      url: { type: String, trim: true, default: "" },
+      publicId: { type: String, trim: true, default: "", select: false },
+    },
+
     password: {
       type: String,
       required: true,

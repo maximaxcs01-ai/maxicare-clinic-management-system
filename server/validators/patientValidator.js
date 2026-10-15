@@ -74,10 +74,93 @@ const validatePatient = (req, res, next) => {
 };
 
 const validateOwnPatient = (req, res, next) => {
-  const data = buildPatient(req.body);
-  const error = validatePatientData(data, false);
-  if (error) return res.status(400).json({ message: error });
-  delete data.portalStatus;
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return res.status(400).json({ message: "Invalid profile details" });
+  }
+
+  const allowedFields = new Set([
+    "sex",
+    "address",
+    "mobileNumber",
+    "dateOfBirth",
+  ]);
+  if (Object.keys(body).some((field) => !allowedFields.has(field))) {
+    return res.status(400).json({
+      message: "Only sex, address, mobile number, and date of birth can be updated",
+    });
+  }
+
+  const sex = clean(body.sex);
+  if (!["Male", "Female"].includes(sex)) {
+    return res.status(400).json({ message: "Sex must be Male or Female" });
+  }
+
+  const addressFields = new Set([
+    "street",
+    "barangay",
+    "city",
+    "province",
+    "zipCode",
+  ]);
+  if (
+    !body.address ||
+    typeof body.address !== "object" ||
+    Array.isArray(body.address) ||
+    Object.keys(body.address).some((field) => !addressFields.has(field))
+  ) {
+    return res.status(400).json({ message: "Please provide a valid address" });
+  }
+
+  const address = {
+    street: clean(body.address.street),
+    barangay: clean(body.address.barangay),
+    city: clean(body.address.city),
+    province: clean(body.address.province),
+    zipCode: clean(body.address.zipCode),
+  };
+  if (
+    !address.street ||
+    address.street.length > 200 ||
+    !address.barangay ||
+    address.barangay.length > 100 ||
+    !address.city ||
+    address.city.length > 100 ||
+    !address.province ||
+    address.province.length > 100 ||
+    address.zipCode.length > 10
+  ) {
+    return res.status(400).json({
+      message: "Complete the required address fields and check their length",
+    });
+  }
+  if (!isCityInProvince(address.province, address.city)) {
+    return res.status(400).json({
+      message: "City or municipality does not match the selected province",
+    });
+  }
+
+  const mobileNumber = clean(body.mobileNumber);
+  if (mobileNumber && !mobilePattern.test(mobileNumber)) {
+    return res.status(400).json({
+      message: "Mobile number must be 11 digits and start with 09",
+    });
+  }
+
+  const data = {
+    sex,
+    gender: sex,
+    address,
+    mobileNumber: mobileNumber || null,
+    contactNumber: mobileNumber || null,
+  };
+  if (Object.hasOwn(body, "dateOfBirth") && body.dateOfBirth !== "") {
+    if (!validDate(body.dateOfBirth)) {
+      return res.status(400).json({ message: "Invalid date of birth" });
+    }
+    data.dateOfBirth = body.dateOfBirth;
+  }
+
   req.validatedPatient = data;
   next();
 };

@@ -207,6 +207,9 @@ const getCurrentUser = (req, res) => {
       role: req.user.role,
       status: req.user.status,
       emailVerified: req.user.emailVerified,
+      ...(req.user.role === "doctor"
+        ? {}
+        : { profileImage: req.user.profileImage }),
     },
   });
 };

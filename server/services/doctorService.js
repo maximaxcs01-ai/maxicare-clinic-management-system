@@ -12,32 +12,7 @@ const { getNextDoctorNumber } = require("./doctorNumberService");
 const { buildPagination, escapeRegex, getPagination } = require("../utils/pagination");
 const { recordAudit } = require("./auditService");
 const cloudinaryService = require("./cloudinaryService");
-
-const detectImageType = (buffer) => {
-  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return "image/jpeg";
-  }
-  if (
-    buffer[0] === 0x89 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x4e &&
-    buffer[3] === 0x47 &&
-    buffer[4] === 0x0d &&
-    buffer[5] === 0x0a &&
-    buffer[6] === 0x1a &&
-    buffer[7] === 0x0a
-  ) {
-    return "image/png";
-  }
-  if (
-    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
-    buffer.subarray(8, 12).toString("ascii") === "WEBP"
-  ) {
-    return "image/webp";
-  }
-  return null;
-};
+const { validateProfileImageFile } = require("../middleware/doctorImageUpload");
 
 const ensureServicesExist = async (serviceIds, session) => {
   const count = await Service.countDocuments({ _id: { $in: serviceIds } }).session(session || null);
@@ -89,14 +64,8 @@ const getMyDoctor = (userId) =>
     .populate("userId", "passwordSetupRequired status");
 
 const updateMyProfileImage = async (userId, file) => {
-  if (!file?.buffer) {
-    throw new AppError("Select a profile photo to upload", 400);
-  }
-
-  const detectedType = detectImageType(file.buffer);
-  if (!detectedType || detectedType !== file.mimetype) {
-    throw new AppError("Profile photo must be a valid JPEG, PNG, or WebP image", 400);
-  }
+  const fileError = validateProfileImageFile(file);
+  if (fileError) throw fileError;
 
   const doctor = await Doctor.findOne({ userId }).select("_id");
   if (!doctor) {

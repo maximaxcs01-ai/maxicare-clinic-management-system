@@ -82,13 +82,13 @@ const logCloudinaryError = (error) => {
   });
 };
 
-const uploadDoctorImage = (buffer) => {
+const uploadProfileImage = (buffer, folder) => {
   ensureCloudinaryConfigured();
   const cloudinary = configureCloudinary();
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "maxicare/doctors",
+        folder,
         resource_type: "image",
       },
       (error, result) => {
@@ -109,6 +109,9 @@ const uploadDoctorImage = (buffer) => {
   });
 };
 
+const uploadDoctorImage = (buffer) =>
+  uploadProfileImage(buffer, "maxicare/doctors");
+
 const deleteImage = async (publicId) => {
   if (!publicId) return;
   ensureCloudinaryConfigured();
@@ -119,4 +122,4 @@ const deleteImage = async (publicId) => {
   });
 };
 
-module.exports = { uploadDoctorImage, deleteImage };
+module.exports = { uploadProfileImage, uploadDoctorImage, deleteImage };
