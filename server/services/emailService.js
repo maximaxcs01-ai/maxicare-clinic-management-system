@@ -1,6 +1,14 @@
 const AppError = require("../utils/AppError");
 
 const BREVO_EMAIL_URL = "https://api.brevo.com/v3/smtp/email";
+const EMAIL_ADDRESS_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NETWORK_ERROR_CODES = new Set([
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "EAI_AGAIN",
+  "ENOTFOUND",
+  "ETIMEDOUT",
+]);
 
 const getEmailConfiguration = () => {
   const requiredVariables = [
@@ -9,18 +17,79 @@ const getEmailConfiguration = () => {
     "BREVO_SENDER_NAME",
   ];
   const missingVariables = requiredVariables.filter(
-    (variable) => !process.env[variable]
+    (variable) => !process.env[variable]?.trim()
   );
 
   if (missingVariables.length > 0) {
+    console.error(
+      JSON.stringify({
+        event: "email_delivery_configuration_error",
+        provider: "brevo",
+        missingVariables,
+      })
+    );
+    throw new AppError("Email delivery is not configured", 503);
+  }
+
+  const senderEmail = process.env.BREVO_SENDER_EMAIL.trim();
+  const senderName = process.env.BREVO_SENDER_NAME.trim();
+  if (!EMAIL_ADDRESS_PATTERN.test(senderEmail) || !senderName) {
+    console.error(
+      JSON.stringify({
+        event: "email_delivery_configuration_error",
+        provider: "brevo",
+        reason: "invalid_sender_configuration",
+        senderDomain: getEmailDomain(senderEmail),
+      })
+    );
     throw new AppError("Email delivery is not configured", 503);
   }
 
   return {
-    apiKey: process.env.BREVO_API_KEY,
-    senderEmail: process.env.BREVO_SENDER_EMAIL,
-    senderName: process.env.BREVO_SENDER_NAME,
+    apiKey: process.env.BREVO_API_KEY.trim(),
+    senderEmail,
+    senderName,
   };
+};
+
+const getEmailDomain = (email) => {
+  const atIndex = email.lastIndexOf("@");
+  return atIndex === -1 ? null : email.slice(atIndex + 1).toLowerCase();
+};
+
+const redactSensitiveText = (value, sensitiveValues) => {
+  let safeValue = String(value)
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[redacted-email]")
+    .replace(/\b\d{6}\b/g, "[redacted-code]")
+    .replace(/\bBearer\s+\S+/gi, "Bearer [redacted]");
+
+  for (const sensitiveValue of sensitiveValues) {
+    if (sensitiveValue) {
+      safeValue = safeValue.split(sensitiveValue).join("[redacted]");
+    }
+  }
+
+  return safeValue.replace(/[\r\n\t]/g, " ").slice(0, 240);
+};
+
+const getProviderError = async (response) => {
+  try {
+    const body = await response.json();
+    return {
+      code:
+        typeof body?.code === "string" &&
+        /^[A-Za-z0-9_.-]{1,80}$/.test(body.code)
+          ? body.code
+          : null,
+      message: typeof body?.message === "string" ? body.message : null,
+    };
+  } catch {
+    return { code: null, message: null };
+  }
+};
+
+const logEmailDeliveryFailure = (details) => {
+  console.error(JSON.stringify({ event: "email_delivery_failed", ...details }));
 };
 
 const escapeHtml = (value) =>
@@ -53,10 +122,48 @@ const sendEmail = async ({ email, name, subject, htmlContent, errorMessage }) =>
       signal: AbortSignal.timeout(10000),
     });
   } catch (error) {
+    const errorCode =
+      typeof error?.code === "string" && NETWORK_ERROR_CODES.has(error.code)
+        ? error.code
+        : null;
+    logEmailDeliveryFailure({
+      provider: "brevo",
+      status: null,
+      providerErrorCode: errorCode,
+      message:
+        error?.name === "TimeoutError"
+          ? "Email provider request timed out"
+          : "Email provider network request failed",
+      senderDomain: getEmailDomain(senderEmail),
+    });
     throw new AppError(errorMessage, 502);
   }
 
   if (!response.ok) {
+    const providerError = await getProviderError(response);
+    logEmailDeliveryFailure({
+      provider: "brevo",
+      status: response.status,
+      providerErrorCode: providerError.code
+        ? redactSensitiveText(providerError.code, [
+            apiKey,
+            senderEmail,
+            senderName,
+            email,
+            name,
+          ])
+        : null,
+      message: providerError.message
+        ? redactSensitiveText(providerError.message, [
+            apiKey,
+            senderEmail,
+            senderName,
+            email,
+            name,
+          ])
+        : "Email provider rejected the request",
+      senderDomain: getEmailDomain(senderEmail),
+    });
     throw new AppError(errorMessage, 502);
   }
 };
