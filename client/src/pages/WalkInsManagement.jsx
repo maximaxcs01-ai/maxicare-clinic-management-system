@@ -36,7 +36,10 @@ const steps = ['Patient', 'Visit Details', 'Queue / Review']
 function WalkInsManagement() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const queuePath = user?.role === 'admin' ? '/admin/queue' : '/receptionist/queue'
+  const isAdmin = user?.role === 'admin'
+  const isOperationalStaff = isAdmin || user?.role === 'receptionist'
+  const roleRoot = isAdmin ? '/admin' : '/receptionist'
+  const queuePath = `${roleRoot}/queue`
   const [step, setStep] = useState(0)
   const [patientMode, setPatientMode] = useState('existing')
   const [search, setSearch] = useState('')
@@ -60,17 +63,24 @@ function WalkInsManagement() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
   const [notice, setNotice] = useState('')
-  const isReceptionist = user?.role === 'receptionist'
-
   useEffect(() => {
     let active = true
     getServices({ status: 'active', limit: 100 })
       .then((response) => {
-        if (active) setServices(response.data.data || [])
+        if (!active) return
+        const data = response.data?.data
+        if (!Array.isArray(data)) {
+          throw new Error('The service response could not be read.')
+        }
+        setServices(data)
       })
       .catch((err) => {
         if (active) {
-          setError(err.response?.data?.message || 'Unable to load services.')
+          setError(
+            err.response?.data?.message ||
+              err.message ||
+              'Unable to load services.',
+          )
         }
       })
       .finally(() => {
@@ -93,7 +103,14 @@ function WalkInsManagement() {
       setPatientLoading(true)
       searchWalkInPatients({ search: query, limit: 10 })
         .then((response) => {
-          if (active) setPatients(response.data.data || [])
+          if (!active) return
+          const data = response.data?.data
+          if (!Array.isArray(data)) {
+            setPatients([])
+            setError('The patient search response could not be read.')
+            return
+          }
+          setPatients(data)
         })
         .catch((err) => {
           if (active) {
@@ -206,15 +223,38 @@ function WalkInsManagement() {
   }
 
   return (
-    <Box component="section" className={isReceptionist ? 'receptionist-page' : undefined} sx={{ width: '100%', minWidth: 0 }}>
+    <Box
+      component="section"
+      className={
+        isAdmin
+          ? 'admin-page admin-walkins-page'
+          : isOperationalStaff
+            ? 'receptionist-page'
+            : undefined
+      }
+      sx={{ width: '100%', minWidth: 0 }}
+    >
       <Stack
-        className={isReceptionist ? 'receptionist-page-header' : undefined}
+        className={
+          isAdmin
+            ? 'admin-page-header'
+            : isOperationalStaff
+              ? 'receptionist-page-header'
+              : undefined
+        }
         direction={{ xs: 'column', sm: 'row' }}
         spacing={2}
         sx={{
           mb: 3,
           justifyContent: 'space-between',
           alignItems: { xs: 'stretch', sm: 'center' },
+          ...(isAdmin && {
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: 'minmax(0, 1fr)',
+              sm: 'minmax(0, 1fr) auto',
+            },
+          }),
         }}
       >
         <Box>
@@ -223,14 +263,23 @@ function WalkInsManagement() {
             Register a walk-in patient and add them to the next available doctor&apos;s queue.
           </Typography>
         </Box>
-        {isReceptionist && (
+        {isOperationalStaff && (
           <Button variant="outlined" onClick={() => navigate(queuePath)}>
             View Queue
           </Button>
         )}
       </Stack>
 
-      <Card className={isReceptionist ? 'receptionist-walkins-card' : undefined} sx={{ width: '100%' }}>
+      <Card
+        className={
+          isAdmin
+            ? 'admin-management-panel'
+            : isOperationalStaff
+              ? 'receptionist-walkins-card'
+              : undefined
+        }
+        sx={{ width: '100%' }}
+      >
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           {success ? (
             <Stack spacing={2}>

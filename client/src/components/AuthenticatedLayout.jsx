@@ -135,17 +135,7 @@ function AuthenticatedLayout() {
           px: sidebarCollapsed ? 1 : 2.5,
         }}
       >
-        {!sidebarCollapsed &&
-          (isReceptionist ? (
-            <Box
-              component="img"
-              className="receptionist-logo"
-              src="/maxicare-logo.png"
-              alt="Maxicare"
-            />
-          ) : (
-            <BrandMark />
-          ))}
+        {!sidebarCollapsed && <BrandMark />}
         {usesCollapsibleSidebar && desktop && (
           <Tooltip title={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}>
             <IconButton

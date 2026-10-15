@@ -129,14 +129,20 @@ function PatientAppointments() {
     getMyAppointments({ bucket, page, limit: 10 })
       .then((response) => {
         if (!active) return
+        if (!Array.isArray(response.data?.data)) {
+          throw new Error('The appointment response could not be read.')
+        }
         setAppointments(response.data.data)
-        setPagination(response.data.pagination)
+        setPagination(
+          response.data.pagination || { page: 1, totalPages: 1, total: 0 },
+        )
         setError('')
       })
       .catch((requestError) => {
         if (active) {
           setError(
             requestError.response?.data?.message ||
+              requestError.message ||
               'Unable to load your appointments.',
           )
         }
@@ -778,7 +784,7 @@ function PatientAppointments() {
                   min: todayStr,
                   max: addDays(todayStr, 60),
                 }}
-                InputLabelProps={{ shrink: true }}
+                slotProps={{ inputLabel: { shrink: true } }}
                 fullWidth
               />
 

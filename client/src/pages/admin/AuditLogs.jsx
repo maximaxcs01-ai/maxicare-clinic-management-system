@@ -100,16 +100,20 @@ function AuditLogs() {
             type="date"
             value={filters.from}
             onChange={(event) => updateFilter('from', event.target.value)}
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ max: filters.to }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { max: filters.to },
+            }}
           />
           <TextField
             label="Date to"
             type="date"
             value={filters.to}
             onChange={(event) => updateFilter('to', event.target.value)}
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ min: filters.from }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { min: filters.from },
+            }}
           />
           <TextField
             select

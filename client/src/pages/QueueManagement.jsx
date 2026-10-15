@@ -52,6 +52,9 @@ function QueueManagement() {
   const navigate = useNavigate()
   const isDoctor = user?.role === 'doctor'
   const isReceptionist = user?.role === 'receptionist'
+  const isAdmin = user?.role === 'admin'
+  const isOperationalStaff = isAdmin || isReceptionist
+  const roleRoot = isAdmin ? '/admin' : '/receptionist'
   const [rows, setRows] = useState([])
   const [operationalSummary, setOperationalSummary] = useState(null)
   const [queueDate, setQueueDate] = useState('')
@@ -88,7 +91,7 @@ function QueueManagement() {
   }, [loadQueue, refreshKey])
 
   useEffect(() => {
-    if (!isReceptionist) return
+    if (!isOperationalStaff) return
     let active = true
     getDashboard()
       .then((response) => {
@@ -107,7 +110,7 @@ function QueueManagement() {
     return () => {
       active = false
     }
-  }, [isReceptionist, refreshKey])
+  }, [isOperationalStaff, refreshKey])
 
   const firstWaitingEntryByDoctor = useMemo(() => {
     const firstWaiting = new Map()
@@ -190,9 +193,29 @@ function QueueManagement() {
   }
 
   return (
-    <Box component="section" className={isDoctor ? 'doctor-page doctor-queue-page' : isReceptionist ? 'receptionist-page receptionist-queue-page' : undefined} sx={{ width: '100%', minWidth: 0 }}>
+    <Box
+      component="section"
+      className={
+        isDoctor
+          ? 'doctor-page doctor-queue-page'
+          : isAdmin
+            ? 'admin-page admin-queue-page'
+            : isReceptionist
+              ? 'receptionist-page receptionist-queue-page'
+              : undefined
+      }
+      sx={{ width: '100%', minWidth: 0 }}
+    >
       <Stack
-        className={isDoctor ? 'doctor-page-header' : isReceptionist ? 'receptionist-page-header' : undefined}
+        className={
+          isDoctor
+            ? 'doctor-page-header'
+            : isAdmin
+              ? 'admin-page-header'
+              : isReceptionist
+                ? 'receptionist-page-header'
+                : undefined
+        }
         direction={{ xs: 'column', sm: 'row' }}
         spacing={2}
         sx={{
@@ -200,16 +223,23 @@ function QueueManagement() {
           mb: 3,
           justifyContent: 'space-between',
           alignItems: { xs: 'stretch', sm: 'center' },
+          ...(isAdmin && {
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: 'minmax(0, 1fr)',
+              sm: 'minmax(0, 1fr) auto',
+            },
+          }),
         }}
       >
         <Box>
           <Typography variant="h4">
-            {isDoctor ? 'My Queue' : isReceptionist ? 'Queue Management' : 'Queue'}
+            {isDoctor ? 'My Queue' : isOperationalStaff ? 'Queue Management' : 'Queue'}
           </Typography>
           <Typography color="text.secondary">
             {isDoctor
               ? 'View today’s patients waiting for your consultation.'
-              : isReceptionist
+              : isOperationalStaff
                 ? 'Monitor patient flow and manage the waiting queue.'
               : 'Manage today’s checked-in and walk-in patients.'}
           </Typography>
@@ -224,32 +254,40 @@ function QueueManagement() {
               {queueDate} · Manila time
             </Typography>
           )}
-          {isReceptionist && (
+          {isOperationalStaff && (
             <Button
               component={RouterLink}
-              to="/receptionist/walk-ins"
+              to={`${roleRoot}/walk-ins`}
               variant="contained"
               startIcon={<PersonAddAltOutlinedIcon />}
             >
               Walk-In Patient
             </Button>
           )}
-          <Button variant={isReceptionist ? 'outlined' : 'text'} onClick={() => setRefreshKey((current) => current + 1)}>
+          <Button variant={isOperationalStaff ? 'outlined' : 'text'} onClick={() => setRefreshKey((current) => current + 1)}>
             Refresh
           </Button>
         </Stack>
       </Stack>
 
-      {isReceptionist && (
-        <Grid container spacing={1.5} className="receptionist-queue-counts">
+      {isOperationalStaff && (
+        <Grid
+          container
+          spacing={1.5}
+          className={isAdmin ? 'admin-queue-counts' : 'receptionist-queue-counts'}
+        >
           {[
             ['Waiting', loading ? '—' : rows.filter((entry) => entry.queueStatus === 'waiting').length],
             ['Called', loading ? '—' : rows.filter((entry) => entry.queueStatus === 'called').length],
-            ['In Consultation', operationalSummary?.today?.statusCounts?.in_consultation ?? '—'],
-            ['Active Queue', operationalSummary?.activeQueueCount ?? (loading ? '—' : rows.length)],
+            ['In Consultation', operationalSummary?.today?.statusCounts?.in_consultation ?? operationalSummary?.appointmentStatusSummary?.in_consultation ?? '—'],
+            ['Active Queue', operationalSummary?.activeQueueCount ?? operationalSummary?.activeQueue ?? (loading ? '—' : rows.length)],
           ].map(([label, value]) => (
             <Grid key={label} size={{ xs: 6, md: 3 }}>
-              <Paper className="receptionist-queue-count">
+              <Paper
+                className={
+                  isAdmin ? 'admin-queue-count' : 'receptionist-queue-count'
+                }
+              >
                 <Typography variant="body2" color="text.secondary">{label}</Typography>
                 <Typography variant="h5" fontWeight={700}>{value}</Typography>
               </Paper>
@@ -258,7 +296,7 @@ function QueueManagement() {
         </Grid>
       )}
 
-      <Paper className={isDoctor ? 'doctor-management-panel' : isReceptionist ? 'receptionist-management-panel' : undefined} sx={{ width: '100%', overflow: 'hidden' }}>
+      <Paper className={isDoctor ? 'doctor-management-panel' : isAdmin ? 'admin-management-panel' : isReceptionist ? 'receptionist-management-panel' : undefined} sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer>
           <Table>
             <TableHead>
@@ -288,7 +326,7 @@ function QueueManagement() {
                     <TableRow key={entry._id} hover>
                       <TableCell>
                         <Typography fontWeight={700}>
-                          {entry.queuePosition}
+                          {entry.queuePosition ?? '—'}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -375,24 +413,28 @@ function QueueManagement() {
                                 </span>
                               </Tooltip>
                             )}
-                            <Tooltip title="Remove from queue">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                disabled={Boolean(busyKey)}
-                                onClick={() =>
-                                  setRemoveDialog({
-                                    open: true,
-                                    entry,
-                                    reason: '',
-                                    loading: false,
-                                    error: '',
-                                  })
-                                }
-                              >
-                                <CloseOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            {['waiting', 'called'].includes(
+                              entry.queueStatus,
+                            ) && (
+                              <Tooltip title="Remove from queue">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  disabled={Boolean(busyKey)}
+                                  onClick={() =>
+                                    setRemoveDialog({
+                                      open: true,
+                                      entry,
+                                      reason: '',
+                                      loading: false,
+                                      error: '',
+                                    })
+                                  }
+                                >
+                                  <CloseOutlinedIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                           </Stack>
                         )}
                       </TableCell>

@@ -75,6 +75,7 @@ function DoctorsManagement() {
   const [saving, setSaving] = useState(false)
   const [confirm, setConfirm] = useState(null)
   const [notice, setNotice] = useState(null)
+  const [lookupError, setLookupError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -82,16 +83,29 @@ function DoctorsManagement() {
     Promise.all([getServices({ limit: 100 }), getDoctors({ limit: 100 })])
       .then(([serviceResponse, doctorResponse]) => {
         if (!active) return
-        setServices(serviceResponse.data.data)
+        const serviceData = serviceResponse.data?.data
+        const doctorData = doctorResponse.data?.data
+        if (!Array.isArray(serviceData) || !Array.isArray(doctorData)) {
+          throw new Error('The doctor or service response could not be read.')
+        }
+        setServices(serviceData)
         setSpecializations(
           [...new Set(
-            (doctorResponse.data.data || [])
+            doctorData
               .map((doctor) => doctor.specialization)
               .filter(Boolean),
           )].sort((left, right) => left.localeCompare(right)),
         )
       })
-      .catch(() => {})
+      .catch((error) => {
+        if (active) {
+          setLookupError(
+            error.response?.data?.message ||
+              error.message ||
+              'Unable to load doctor management options.',
+          )
+        }
+      })
 
     return () => {
       active = false
@@ -113,6 +127,9 @@ function DoctorsManagement() {
         if (active) {
           setRows(response.data.data)
           setPagination(response.data.pagination)
+          setNotice((current) =>
+            current?.severity === 'error' ? null : current,
+          )
         }
       } catch (error) {
         if (active) {
@@ -144,7 +161,9 @@ function DoctorsManagement() {
             mobileNumber: doctor.mobileNumber,
             licenseNumber: doctor.licenseNumber,
             specialization: doctor.specialization,
-            serviceIds: doctor.serviceIds.map((item) => item._id),
+            serviceIds: Array.isArray(doctor.serviceIds)
+              ? doctor.serviceIds.map((item) => item._id)
+              : [],
             status: doctor.status,
           }
         : emptyForm,
@@ -264,6 +283,12 @@ function DoctorsManagement() {
           Add Doctor
         </Button>
       </Box>
+
+      {lookupError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {lookupError}
+        </Alert>
+      )}
 
       <Paper className="admin-management-panel" sx={{ border: 1, borderColor: 'divider' }}>
         <Stack

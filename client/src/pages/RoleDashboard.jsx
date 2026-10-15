@@ -1,6 +1,8 @@
 import ArrowForwardOutlinedIcon from '@mui/icons-material/ArrowForwardOutlined'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import HistoryEduOutlinedIcon from '@mui/icons-material/HistoryEduOutlined'
+import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined'
+import QueueOutlinedIcon from '@mui/icons-material/QueueOutlined'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import {
   Alert,
@@ -434,6 +436,24 @@ function AdminDashboard({ dashboard, loading, error }) {
             Clinic operations and activity at a glance.
           </Typography>
         </Box>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+          <Button
+            component={RouterLink}
+            to="/admin/walk-ins"
+            variant="contained"
+            startIcon={<PersonAddAltOutlinedIcon />}
+          >
+            Walk-In Patient
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/admin/queue"
+            variant="outlined"
+            startIcon={<QueueOutlinedIcon />}
+          >
+            View Queue
+          </Button>
+        </Stack>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

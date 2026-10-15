@@ -44,7 +44,13 @@ function Patients() {
       try {
         setLoading(true)
         const response = await getPatients({ page, limit: 10, search, portalStatus })
-        if (active) { setRows(response.data.data); setPagination(response.data.pagination) }
+        if (active) {
+          setRows(response.data.data)
+          setPagination(response.data.pagination)
+          setNotice((current) =>
+            current?.severity === 'error' ? null : current,
+          )
+        }
       } catch (error) {
         if (active) setNotice({ severity: 'error', message: error.response?.data?.message || 'Unable to load patients.' })
       } finally { if (active) setLoading(false) }

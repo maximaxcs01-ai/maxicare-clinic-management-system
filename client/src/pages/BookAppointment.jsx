@@ -137,8 +137,12 @@ function BookAppointment() {
     Promise.all([getServices({ limit: 100 }), getOwnPatient()])
       .then(([servicesResponse, patientResponse]) => {
         if (!active) return
-        setServices(servicesResponse.data.data)
-        setPatient(patientResponse.data.data)
+        const serviceData = servicesResponse.data?.data
+        if (!Array.isArray(serviceData)) {
+          throw new Error('The service response could not be read.')
+        }
+        setServices(serviceData)
+        setPatient(patientResponse.data?.data || null)
       })
       .catch((requestError) => {
         if (active) {
@@ -161,7 +165,14 @@ function BookAppointment() {
     let active = true
     getDoctors({ serviceId: selectedServiceId, limit: 100 })
       .then((response) => {
-        if (active) setDoctors(response.data.data)
+        if (!active) return
+        const data = response.data?.data
+        if (!Array.isArray(data)) {
+          setDoctors([])
+          setError('The doctor response could not be read.')
+          return
+        }
+        setDoctors(data)
       })
       .catch((requestError) => {
         if (active) {
@@ -191,7 +202,13 @@ function BookAppointment() {
     })
       .then((response) => {
         if (!active) return
-        setSlots(response.data.slots.filter((slot) => slot.available))
+        const availableSlots = response.data?.slots
+        if (!Array.isArray(availableSlots)) {
+          setSlots([])
+          setAvailabilityError('The availability response could not be read.')
+          return
+        }
+        setSlots(availableSlots.filter((slot) => slot.available))
         setAvailabilityError('')
       })
       .catch((requestError) => {

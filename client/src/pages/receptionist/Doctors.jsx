@@ -41,6 +41,7 @@ function ReceptionistDoctorsPage() {
         if (active) {
           setRows(response.data.data)
           setPagination(response.data.pagination)
+          setNotice('')
         }
       } catch (error) {
         if (active) {
@@ -122,7 +123,11 @@ function ReceptionistDoctorsPage() {
                   </TableCell>
                   <TableCell>{doctor.doctorNumber}</TableCell>
                   <TableCell>{doctor.specialization}</TableCell>
-                  <TableCell>{doctor.serviceIds.map((service) => service.name).join(', ') || '—'}</TableCell>
+                  <TableCell>
+                    {Array.isArray(doctor.serviceIds)
+                      ? doctor.serviceIds.map((service) => service.name).join(', ') || '—'
+                      : '—'}
+                  </TableCell>
                   <TableCell><StatusChip status={doctor.status} /></TableCell>
                   <TableCell align="right">
                     <Tooltip title="View schedule">

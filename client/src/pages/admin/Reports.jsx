@@ -140,16 +140,20 @@ function Reports() {
             type="date"
             value={from}
             onChange={(event) => setFrom(event.target.value)}
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ max: to }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { max: to },
+            }}
           />
           <TextField
             label="Date to"
             type="date"
             value={to}
             onChange={(event) => setTo(event.target.value)}
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ min: from }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { min: from },
+            }}
           />
           {range && (
             <Typography variant="body2" color="text.secondary" sx={{ pb: 1 }}>

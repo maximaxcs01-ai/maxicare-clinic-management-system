@@ -35,7 +35,13 @@ function ServicesManagement() {
       try {
         setLoading(true)
         const response = await getServices({ page, limit: 10, search, status })
-        if (active) { setRows(response.data.data); setPagination(response.data.pagination) }
+        if (active) {
+          setRows(response.data.data)
+          setPagination(response.data.pagination)
+          setNotice((current) =>
+            current?.severity === 'error' ? null : current,
+          )
+        }
       } catch (error) {
         if (active) setNotice({ severity: 'error', message: error.response?.data?.message || 'Unable to load services.' })
       } finally { if (active) setLoading(false) }

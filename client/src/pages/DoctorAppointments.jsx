@@ -58,17 +58,24 @@ function DoctorAppointments() {
     })
       .then((response) => {
         if (!active) return
-        setAppointments(response.data.data || [])
-        setPagination(response.data.pagination)
-        setError('')
-      })
-      .catch((requestError) => {
-        if (active) {
-          setError(
-            requestError.response?.data?.message ||
-              'Unable to load your appointments.',
-          )
-        }
+      if (!Array.isArray(response.data?.data)) {
+        throw new Error('The appointment response could not be read.')
+      }
+      setAppointments(response.data.data)
+      setPagination(
+        response.data.pagination || { page: 1, totalPages: 1, total: 0 },
+      )
+      setError('')
+    })
+    .catch((requestError) => {
+      if (active) {
+        setAppointments([])
+        setError(
+          requestError.response?.data?.message ||
+            requestError.message ||
+            'Unable to load your appointments.',
+        )
+      }
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -136,7 +143,7 @@ function DoctorAppointments() {
           type="date"
           value={date}
           onChange={changeDate}
-          InputLabelProps={{ shrink: true }}
+          slotProps={{ inputLabel: { shrink: true } }}
           sx={{ minWidth: 180 }}
         />
         {date && (

@@ -503,25 +503,35 @@ const addCheckedInAppointmentToQueue = async (appointmentId, user, request) => {
 const listTodayQueue = async (user) => {
   const { start, end, date } = getManilaDayBounds();
   let doctorFilter = {};
+  const queueFilter = {
+    joinedAt: { $gte: start, $lt: end },
+  };
   if (user.role === "doctor") {
     const doctor = await Doctor.findOne({ userId: user._id }).select("_id");
     if (!doctor) throw new AppError("Doctor profile not found", 404);
     doctorFilter = { doctorId: doctor._id };
+    Object.assign(queueFilter, doctorFilter, {
+      active: true,
+      queueStatus: { $in: ACTIVE_QUEUE_STATUSES },
+    });
+  } else {
+    queueFilter.$or = [
+      { active: true, queueStatus: { $in: ACTIVE_QUEUE_STATUSES } },
+      { active: false, queueStatus: "in_consultation" },
+    ];
   }
 
   const entries = await queuePopulation(
-    QueueEntry.find({
-      ...doctorFilter,
-      active: true,
-      queueStatus: { $in: ACTIVE_QUEUE_STATUSES },
-      joinedAt: { $gte: start, $lt: end },
-    }).sort({ doctorId: 1, joinedAt: 1, _id: 1 })
+    QueueEntry.find(queueFilter).sort({ doctorId: 1, joinedAt: 1, _id: 1 })
   );
   const positions = new Map();
   const data = entries.map((entry) => {
     const groupId = String(entry.doctorId?._id || "unknown");
-    const position = (positions.get(groupId) || 0) + 1;
-    positions.set(groupId, position);
+    const isInConsultation = entry.queueStatus === "in_consultation";
+    const position = isInConsultation
+      ? null
+      : (positions.get(groupId) || 0) + 1;
+    if (!isInConsultation) positions.set(groupId, position);
     return { ...entry.toObject(), queuePosition: position };
   });
   return { date, timezone: CLINIC_TIMEZONE, data };

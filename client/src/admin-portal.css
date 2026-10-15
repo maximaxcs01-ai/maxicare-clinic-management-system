@@ -63,6 +63,24 @@
   justify-self: end;
 }
 
+.admin-queue-counts {
+  margin-bottom: 20px;
+}
+
+.admin-queue-count {
+  height: 100%;
+  padding: 16px 18px;
+  border: 1px solid #dfe7ed;
+  border-radius: 14px !important;
+  background: #fff;
+  box-shadow: 0 3px 14px rgba(17, 52, 78, 0.045) !important;
+}
+
+.admin-queue-count .MuiTypography-h5 {
+  margin-top: 5px;
+  color: #123653;
+}
+
 .admin-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

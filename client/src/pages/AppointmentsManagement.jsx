@@ -164,16 +164,26 @@ function AppointmentsManagement() {
         if (date) params.date = date
 
         const response = await getAppointments(params)
+        if (!Array.isArray(response.data?.data)) {
+          throw new Error('The appointment response could not be read.')
+        }
         if (active) {
           setRows(response.data.data)
-          setPagination(response.data.pagination)
+          setPagination(
+            response.data.pagination || { page: 1, totalPages: 1, total: 0 },
+          )
+          setNotice((current) =>
+            current?.severity === 'error' ? null : current,
+          )
         }
       } catch (err) {
         if (active) {
           setNotice({
             severity: 'error',
             message:
-              err.response?.data?.message || 'Unable to load appointments.',
+              err.response?.data?.message ||
+              err.message ||
+              'Unable to load appointments.',
           })
         }
       } finally {
@@ -1102,7 +1112,8 @@ function AppointmentsManagement() {
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>
                   Status History / Audit Log
                 </Typography>
-                {detailModal.appointment.statusHistory?.length ? (
+                {Array.isArray(detailModal.appointment.statusHistory) &&
+                detailModal.appointment.statusHistory.length ? (
                   <Stack spacing={1}>
                     {detailModal.appointment.statusHistory.map(
                       (item, index) => (

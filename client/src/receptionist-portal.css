@@ -16,13 +16,6 @@
   max-width: 1440px;
 }
 
-.receptionist-logo {
-  display: block;
-  width: 164px;
-  max-height: 56px;
-  object-fit: contain;
-}
-
 .authenticated-shell-receptionist .portal-drawer-content .MuiListItemButton-root {
   min-height: 44px;
   margin-bottom: 5px;

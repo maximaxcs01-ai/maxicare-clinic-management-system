@@ -103,6 +103,17 @@ export const roleNavigation = {
   admin: [
     { label: 'Overview', path: '/admin', icon: DashboardOutlinedIcon },
     {
+      label: 'Appointments',
+      path: '/admin/appointments',
+      icon: CalendarMonthOutlinedIcon,
+    },
+    {
+      label: 'Walk-Ins',
+      path: '/admin/walk-ins',
+      icon: PersonAddAltOutlinedIcon,
+    },
+    { label: 'Queue', path: '/admin/queue', icon: QueueOutlinedIcon },
+    {
       label: 'Patients',
       path: '/admin/patients',
       icon: PeopleOutlinedIcon,
@@ -111,11 +122,6 @@ export const roleNavigation = {
       label: 'Doctors',
       path: '/admin/doctors',
       icon: LocalHospitalOutlinedIcon,
-    },
-    {
-      label: 'Appointments',
-      path: '/admin/appointments',
-      icon: CalendarMonthOutlinedIcon,
     },
     { label: 'Services', path: '/admin/services', icon: ScienceOutlinedIcon },
     { label: 'Users', path: '/admin/users', icon: GroupsOutlinedIcon },
