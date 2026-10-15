@@ -24,39 +24,12 @@ import {
   issuePrescription,
   savePrescriptionDraft,
 } from '../services/prescriptionApi'
-
-const newMedication = () => ({
-  medicationName: '',
-  dosage: '',
-  frequency: '',
-  route: '',
-  duration: '',
-  quantity: '',
-  instructions: '',
-})
-
-const medicationFields = [
-  ['medicationName', 'Medication Name', true],
-  ['dosage', 'Dosage', true],
-  ['frequency', 'Frequency', true],
-  ['route', 'Route', false],
-  ['duration', 'Duration', true],
-  ['quantity', 'Quantity', false],
-]
-
-const toDraft = (prescription) => ({
-  medications: prescription.medications?.length
-    ? prescription.medications.map((medication) => ({
-        medicationName: medication.medicationName || '',
-        dosage: medication.dosage || '',
-        frequency: medication.frequency || '',
-        route: medication.route || '',
-        duration: medication.duration || '',
-        quantity: medication.quantity || '',
-        instructions: medication.instructions || '',
-      }))
-    : [newMedication()],
-})
+import {
+  createEmptyMedication,
+  MEDICATION_FIELDS,
+  prescriptionDraftToRequest,
+  prescriptionToDraft,
+} from '../utils/prescriptionForm'
 
 const formatDate = (value) =>
   new Intl.DateTimeFormat('en-PH', {
@@ -68,7 +41,7 @@ function DoctorPrescriptionWorkspace() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [prescription, setPrescription] = useState(null)
-  const [draft, setDraft] = useState({ medications: [newMedication()] })
+  const [draft, setDraft] = useState(() => prescriptionToDraft(null))
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -81,7 +54,7 @@ function DoctorPrescriptionWorkspace() {
       .then((response) => {
         if (!active) return
         setPrescription(response.data.data)
-        setDraft(toDraft(response.data.data))
+        setDraft(prescriptionToDraft(response.data.data))
         setError('')
       })
       .catch((requestError) => {
@@ -119,14 +92,9 @@ function DoctorPrescriptionWorkspace() {
     setError('')
     try {
       const request = shouldIssue ? issuePrescription : savePrescriptionDraft
-      const medications = draft.medications.filter((medication) =>
-        Object.values(medication).some((value) => value.trim())
-      )
-      const response = await request(id, {
-        medications,
-      })
+      const response = await request(id, prescriptionDraftToRequest(draft))
       setPrescription(response.data.data)
-      setDraft(toDraft(response.data.data))
+      setDraft(prescriptionToDraft(response.data.data))
       setIssueConfirmOpen(false)
       setNotice({
         severity: 'success',
@@ -327,7 +295,10 @@ function DoctorPrescriptionWorkspace() {
                 onClick={() =>
                   setDraft((current) => ({
                     ...current,
-                    medications: [...current.medications, newMedication()],
+                    medications: [
+                      ...current.medications,
+                      createEmptyMedication(),
+                    ],
                   }))
                 }
               >
@@ -385,7 +356,7 @@ function DoctorPrescriptionWorkspace() {
                     gap: 2,
                   }}
                 >
-                  {medicationFields.map(([field, label, required]) => (
+                  {MEDICATION_FIELDS.map(([field, label, required]) => (
                     <TextField
                       key={field}
                       required={required}

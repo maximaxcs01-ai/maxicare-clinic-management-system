@@ -7,6 +7,7 @@ const service = require("../services/prescriptionService");
 const { authorize } = require("../middleware/authMiddleware");
 const {
   validatePrescriptionIssue,
+  validatePrescriptionListQuery,
 } = require("../validators/prescriptionValidator");
 
 const ids = {
@@ -353,6 +354,17 @@ test("prescription validators allow legacy general instructions to be omitted", 
 
   assert.equal(statusCode, undefined);
   assert.deepEqual(validated, { medications: [validMedication] });
+});
+
+test("prescription records default to issued while legacy drafts remain filterable", () => {
+  const statuses = [];
+  for (const query of [{}, { status: "draft" }]) {
+    const req = { query };
+    validatePrescriptionListQuery(req, { status() {} }, () => {
+      statuses.push(req.prescriptionStatus);
+    });
+  }
+  assert.deepEqual(statuses, ["issued", "draft"]);
 });
 
 test("prescription API role guard blocks patients, receptionists, and admins", () => {

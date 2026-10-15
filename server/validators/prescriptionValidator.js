@@ -109,7 +109,7 @@ const validatePrescriptionIssue = (req, res, next) => {
 };
 
 const validatePrescriptionListQuery = (req, res, next) => {
-  const status = typeof req.query.status === "string" ? req.query.status : "draft";
+  const status = typeof req.query.status === "string" ? req.query.status : "issued";
   if (!["draft", "issued"].includes(status)) {
     return res.status(400).json({ message: "Invalid prescription status" });
   }

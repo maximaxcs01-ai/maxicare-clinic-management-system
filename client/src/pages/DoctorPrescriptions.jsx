@@ -1,6 +1,7 @@
 import {
   Alert,
   Box,
+  Button,
   Pagination,
   Paper,
   Snackbar,
@@ -29,7 +30,7 @@ const formatDate = (value) =>
 
 function DoctorPrescriptions() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState('draft')
+  const [status, setStatus] = useState('issued')
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState([])
   const [pagination, setPagination] = useState({
@@ -71,7 +72,7 @@ function DoctorPrescriptions() {
       <Stack className="doctor-page-header" spacing={0.5} sx={{ mb: 3 }}>
         <Typography variant="h4">Prescriptions</Typography>
         <Typography color="text.secondary">
-          Manage prescriptions linked to your consultations.
+          View issued prescription records.
         </Typography>
       </Stack>
 
@@ -86,8 +87,8 @@ function DoctorPrescriptions() {
           aria-label="Prescription status"
           sx={{ px: 2, borderBottom: 1, borderColor: 'divider' }}
         >
-          <Tab label="Drafts" value="draft" />
           <Tab label="Issued" value="issued" />
+          <Tab label="Drafts" value="draft" />
         </Tabs>
         <TableContainer>
           <Table>
@@ -95,17 +96,18 @@ function DoctorPrescriptions() {
               <TableRow>
                 <TableCell>Patient</TableCell>
                 <TableCell>Patient Number</TableCell>
-                <TableCell>Service</TableCell>
+                <TableCell>Service / Consultation</TableCell>
                 <TableCell>Medication Count</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>{status === 'issued' ? 'Issued' : 'Created'}</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell align="right">Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               <TableState
                 loading={loading}
                 empty={!rows.length}
-                colSpan={6}
+                colSpan={7}
                 emptyMessage={
                   status === 'draft'
                     ? 'No prescription drafts.'
@@ -117,10 +119,6 @@ function DoctorPrescriptions() {
                   <TableRow
                     key={prescription._id}
                     hover
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() =>
-                      navigate(`/doctor/prescriptions/${prescription._id}`)
-                    }
                   >
                     <TableCell>
                       {prescription.patientId
@@ -133,9 +131,11 @@ function DoctorPrescriptions() {
                     <TableCell>
                       {prescription.serviceId?.name || '—'}
                       <Typography variant="caption" display="block" color="text.secondary">
-                        {prescription.appointmentId?.bookingType === 'walk_in'
-                          ? 'Walk-In'
-                          : 'Scheduled'}
+                        {prescription.consultationId?.startedAt
+                          ? `Consultation ${formatDate(prescription.consultationId.startedAt)}`
+                          : prescription.appointmentId?.bookingType === 'walk_in'
+                            ? 'Walk-In'
+                            : 'Scheduled'}
                       </Typography>
                     </TableCell>
                     <TableCell>{prescription.medications?.length || 0}</TableCell>
@@ -146,6 +146,16 @@ function DoctorPrescriptions() {
                       {formatDate(
                         prescription.issuedAt || prescription.createdAt,
                       )}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        onClick={() =>
+                          navigate(`/doctor/prescriptions/${prescription._id}`)
+                        }
+                      >
+                        View
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

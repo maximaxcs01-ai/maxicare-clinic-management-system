@@ -14,6 +14,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import IssuePrescriptionDialog from '../components/IssuePrescriptionDialog'
 import StatusChip from '../components/common/StatusChip'
 import {
   completeConsultation,
@@ -24,6 +25,7 @@ import {
 import {
   createPrescription,
   getPrescriptionForConsultation,
+  issuePrescription,
 } from '../services/prescriptionApi'
 import {
   consultationDraftToRequest,
@@ -31,7 +33,10 @@ import {
   createEmptyConsultationDraft,
   savedConsultationMatchesRequest,
 } from '../utils/consultationDraft'
-import { openPrescriptionAfterSaving } from '../utils/openPrescriptionAfterSaving'
+import {
+  issueLinkedPrescription,
+  preparePrescriptionIssue,
+} from '../utils/prescriptionIssueWorkflow'
 
 const VITAL_FIELDS = [
   ['systolic', 'Systolic BP', 'mmHg'],
@@ -64,7 +69,9 @@ function DoctorConsultationWorkspace() {
   const [prescriptionLoading, setPrescriptionLoading] = useState(false)
   const [prescription, setPrescription] = useState(null)
   const [prescriptionAction, setPrescriptionAction] = useState(false)
+  const [issueDialogOpen, setIssueDialogOpen] = useState(false)
   const prescriptionActionRef = useRef(false)
+  const issueRequestRef = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -170,7 +177,7 @@ function DoctorConsultationWorkspace() {
     }
   }
 
-  const handleOpenPrescription = async () => {
+  const handleOpenIssuePrescription = async () => {
     if (
       prescriptionActionRef.current ||
       saving ||
@@ -182,34 +189,53 @@ function DoctorConsultationWorkspace() {
     setError('')
     const requestBody = consultationDraftToRequest(draft)
     try {
-      let saveFailed = false
-      try {
-        const openedPrescription = await openPrescriptionAfterSaving({
-          saveDraft: async () => {
-            if (readOnly) return consultation
-            try {
-              return await saveCurrentDraft(requestBody)
-            } catch (requestError) {
-              saveFailed = true
-              throw requestError
-            }
-          },
-          getPrescription: () => getPrescriptionForConsultation(id),
-          createPrescription: () => createPrescription(id),
+      const prepared = await preparePrescriptionIssue({
+        saveConsultation: () => saveCurrentDraft(requestBody),
+        getPrescription: () => getPrescriptionForConsultation(id),
+      })
+      setConsultation(prepared.consultation)
+      setPrescription(prepared.prescription)
+      if (prepared.prescription?.status === 'issued') {
+        setNotice({
+          severity: 'info',
+          message: 'This consultation already has an issued prescription.',
         })
-        navigate(`/doctor/prescriptions/${openedPrescription._id}`)
-      } catch (requestError) {
-        if (!saveFailed) {
-          setError(
-            requestError.response?.data?.message ||
-              'Unable to open a prescription for this consultation.',
-          )
-        }
+      } else {
+        setIssueDialogOpen(true)
       }
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          'Unable to prepare the prescription. Please try again.',
+      )
     } finally {
       setPrescriptionLoading(false)
       prescriptionActionRef.current = false
       setPrescriptionAction(false)
+    }
+  }
+
+  const handleIssuePrescription = async (payload) => {
+    if (issueRequestRef.current) return
+    issueRequestRef.current = true
+    try {
+      const issuedPrescription = await issueLinkedPrescription({
+        consultationId: id,
+        prescription,
+        payload,
+        createPrescription,
+        getPrescription: () => getPrescriptionForConsultation(id),
+        issuePrescription,
+        onDraftCreated: setPrescription,
+      })
+      setPrescription(issuedPrescription)
+      setIssueDialogOpen(false)
+      setNotice({
+        severity: 'success',
+        message: 'Prescription issued successfully.',
+      })
+    } finally {
+      issueRequestRef.current = false
     }
   }
 
@@ -290,16 +316,6 @@ function DoctorConsultationWorkspace() {
         </Box>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <StatusChip status={consultation.status} />
-          <Button
-            disabled={prescriptionAction || saving || prescriptionLoading}
-            onClick={handleOpenPrescription}
-          >
-            {saving
-              ? 'Saving…'
-              : prescriptionLoading
-                ? 'Opening…'
-                : 'Prescription'}
-          </Button>
           <Button
             startIcon={<ArrowBackOutlinedIcon />}
             onClick={() => navigate('/doctor/consultations')}
@@ -558,15 +574,13 @@ function DoctorConsultationWorkspace() {
                 <Button
                   variant="outlined"
                   disabled={prescriptionAction || saving || prescriptionLoading}
-                  onClick={handleOpenPrescription}
+                  onClick={handleOpenIssuePrescription}
                 >
                   {saving
                     ? 'Saving…'
                     : prescriptionLoading
-                      ? 'Opening…'
-                      : prescription
-                        ? 'Open Prescription'
-                        : 'Create Prescription'}
+                      ? 'Preparing…'
+                      : 'Issue Prescription'}
                 </Button>
                 <Button
                   disabled={prescriptionAction || saving || prescriptionLoading}
@@ -622,6 +636,14 @@ function DoctorConsultationWorkspace() {
           )}
         </Stack>
       )}
+
+      <IssuePrescriptionDialog
+        open={issueDialogOpen}
+        consultation={consultation}
+        prescription={prescription}
+        onClose={() => setIssueDialogOpen(false)}
+        onIssue={handleIssuePrescription}
+      />
 
       <ConfirmDialog
         open={confirmOpen}

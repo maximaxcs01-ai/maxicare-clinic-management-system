@@ -104,7 +104,7 @@ const listPrescriptions = async (user, query) => {
   const [data, total] = await Promise.all([
     prescriptionPopulation(
       Prescription.find(filter)
-        .sort({ updatedAt: -1 })
+        .sort(query.status === "issued" ? { issuedAt: -1 } : { updatedAt: -1 })
         .skip(skip)
         .limit(limit)
     ),
