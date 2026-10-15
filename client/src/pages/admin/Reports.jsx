@@ -25,7 +25,7 @@ const manilaDate = (date = new Date()) =>
 
 function ReportTable({ title, columns, rows, emptyMessage }) {
   return (
-    <Paper sx={{ p: { xs: 2, sm: 2.5 } }}>
+    <Paper className="admin-report-panel">
       <Typography variant="h6" sx={{ mb: 2 }}>
         {title}
       </Typography>
@@ -120,18 +120,20 @@ function Reports() {
   }))
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
-      <Stack spacing={0.5} sx={{ mb: 3 }}>
-        <Typography variant="h4">Reports</Typography>
+    <Box component="section" className="admin-page admin-reports-page" sx={{ width: '100%', minWidth: 0 }}>
+      <Box className="admin-page-header">
+        <Box>
+        <Typography variant="h4">Reports &amp; Analytics</Typography>
         <Typography color="text.secondary">
           Review clinic activity for a Manila calendar date range.
         </Typography>
-      </Stack>
-      <Paper sx={{ p: 2.5, mb: 2.5 }}>
+        </Box>
+      </Box>
+      <Paper className="admin-filter-panel">
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
-          alignItems={{ xs: 'stretch', sm: 'flex-end' }}
           spacing={2}
+          sx={{ alignItems: { xs: 'stretch', sm: 'flex-end' } }}
         >
           <TextField
             label="Date from"
@@ -165,44 +167,46 @@ function Reports() {
       )}
       {!loading && report && (
         <Stack spacing={2.5}>
-          <Paper sx={{ p: { xs: 2, sm: 2.5 } }}>
-            <Typography variant="h6">Appointment Summary</Typography>
-            <Typography variant="h3" fontWeight={700} sx={{ my: 2 }}>
-              {totalAppointments}
-            </Typography>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Status breakdown
-            </Typography>
-            <Stack
-              direction="row"
-              useFlexGap
-              flexWrap="wrap"
-              spacing={2}
-              sx={{ mb: 2 }}
-            >
-              {statusRows.map(({ status, count }) => (
-                <Typography key={status}>
-                  <strong>{status.replaceAll('_', ' ')}:</strong> {count}
-                </Typography>
-              ))}
-              {!statusRows.length && (
-                <Typography color="text.secondary">No appointments</Typography>
-              )}
-            </Stack>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Booking type
-            </Typography>
-            <Stack direction="row" spacing={2}>
-              {bookingTypeRows.map(({ type, count }) => (
-                <Typography key={type}>
-                  <strong>{type}:</strong> {count}
-                </Typography>
-              ))}
-              {!bookingTypeRows.length && (
-                <Typography color="text.secondary">No appointments</Typography>
-              )}
-            </Stack>
-          </Paper>
+          <Box className="admin-report-summary-grid">
+            {[
+              ['Total Appointments', totalAppointments],
+              ['Walk-Ins', report.appointmentSummary?.bookingTypes?.walk_in || 0],
+              ['Services Used', report.serviceUtilization.length],
+              ['Doctor Activity', report.doctorActivity.length],
+            ].map(([label, value]) => (
+              <Paper key={label} className="admin-report-metric">
+                <Typography variant="body2" color="text.secondary">{label}</Typography>
+                <Typography variant="h4">{value}</Typography>
+              </Paper>
+            ))}
+          </Box>
+
+          <Box className="admin-reports-grid">
+            <Paper className="admin-report-panel">
+              <Typography variant="h6">Appointment Overview</Typography>
+              <Stack spacing={1.25} sx={{ mt: 2 }}>
+                {statusRows.map(({ status, count }) => (
+                  <Stack key={status} direction="row" sx={{ justifyContent: 'space-between' }}>
+                    <Typography sx={{ textTransform: 'capitalize' }}>{status.replaceAll('_', ' ')}</Typography>
+                    <Typography fontWeight={750}>{count}</Typography>
+                  </Stack>
+                ))}
+                {!statusRows.length && <Typography color="text.secondary">No appointments</Typography>}
+              </Stack>
+            </Paper>
+            <Paper className="admin-report-panel">
+              <Typography variant="h6">Scheduled vs Walk-In</Typography>
+              <Stack spacing={1.25} sx={{ mt: 2 }}>
+                {bookingTypeRows.map(({ type, count }) => (
+                  <Stack key={type} direction="row" sx={{ justifyContent: 'space-between' }}>
+                    <Typography>{type}</Typography>
+                    <Typography fontWeight={750}>{count}</Typography>
+                  </Stack>
+                ))}
+                {!bookingTypeRows.length && <Typography color="text.secondary">No appointments</Typography>}
+              </Stack>
+            </Paper>
+          </Box>
 
           <ReportTable
             title="Service Utilization"
@@ -230,7 +234,7 @@ function Reports() {
             rows={report.doctorActivity}
             emptyMessage="No doctor activity in this date range."
           />
-          <Paper sx={{ p: { xs: 2, sm: 2.5 } }}>
+          <Paper className="admin-report-panel">
             <Typography variant="h6" sx={{ mb: 2 }}>
               Patient Activity
             </Typography>

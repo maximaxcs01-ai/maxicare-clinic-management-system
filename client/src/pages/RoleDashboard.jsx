@@ -10,6 +10,7 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  Divider,
   Grid,
   Paper,
   Stack,
@@ -27,10 +28,11 @@ import StatusChip from '../components/common/StatusChip'
 import useAuth from '../hooks/useAuth'
 import {
   getMyQueue,
+  getAppointments,
   getQueue,
   startConsultation,
 } from '../services/appointmentApi'
-import { getDashboard } from '../services/dashboardApi'
+import { getDashboard, getReports } from '../services/dashboardApi'
 
 const roleCopy = {
   patient: 'Your appointments and care records, in one place.',
@@ -372,6 +374,184 @@ function DoctorDashboard({ user, dashboard, loading, error }) {
               )}
             </Paper>
           </Box>
+        </>
+      )}
+    </Box>
+  )
+}
+
+function AdminDashboard({ dashboard, loading, error }) {
+  const [report, setReport] = useState(null)
+  const [recentAppointments, setRecentAppointments] = useState([])
+  const [insightsLoading, setInsightsLoading] = useState(true)
+  const [insightsError, setInsightsError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    const today = manilaDateKey(new Date())
+    Promise.all([
+      getReports({ from: today, to: today }),
+      getAppointments({ date: today, page: 1, limit: 5 }),
+    ])
+      .then(([reportResponse, appointmentResponse]) => {
+        if (!active) return
+        setReport(reportResponse.data.data)
+        setRecentAppointments(
+          Array.isArray(appointmentResponse.data.data)
+            ? appointmentResponse.data.data
+            : [],
+        )
+        setInsightsError('')
+      })
+      .catch((requestError) => {
+        if (!active) return
+        setInsightsError(
+          requestError.response?.data?.message ||
+            'Unable to load today’s clinic overview.',
+        )
+      })
+      .finally(() => {
+        if (active) setInsightsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const statusRows = Object.entries(
+    report?.appointmentSummary?.byStatus ||
+      dashboard?.appointmentStatusSummary ||
+      {},
+  )
+  const bookingTypes = report?.appointmentSummary?.bookingTypes || {}
+
+  return (
+    <Box component="section" className="admin-page admin-dashboard">
+      <Box className="admin-page-header">
+        <Box>
+          <Typography component="h1" variant="h4">Welcome back, Admin!</Typography>
+          <Typography color="text.secondary">
+            Clinic operations and activity at a glance.
+          </Typography>
+        </Box>
+      </Box>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {loading ? (
+        <Box sx={{ display: 'grid', placeItems: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <Box className="admin-summary-grid">
+            {[
+              ['Total Patients', dashboard?.totalPatients, '/admin/patients'],
+              ['Active Doctors', dashboard?.activeDoctors, '/admin/doctors'],
+              ["Today's Appointments", dashboard?.todayAppointments, '/admin/appointments'],
+              ['Walk-Ins Today', dashboard?.walkInsToday, '/admin/walk-ins'],
+            ].map(([title, value, to]) => (
+              <Paper key={title} component={RouterLink} to={to} className="admin-summary-card">
+                <Typography variant="body2" color="text.secondary">{title}</Typography>
+                <Typography variant="h4">{value ?? '—'}</Typography>
+              </Paper>
+            ))}
+          </Box>
+
+          {insightsError && <Alert severity="warning" sx={{ mt: 2.5 }}>{insightsError}</Alert>}
+          <Box className="admin-dashboard-grid">
+            <Paper className="admin-dashboard-panel">
+              <Typography variant="h6">Appointment Overview</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Today’s appointments by current status.
+              </Typography>
+              {insightsLoading ? (
+                <Box sx={{ display: 'grid', placeItems: 'center', py: 4 }}><CircularProgress size={24} /></Box>
+              ) : statusRows.length ? (
+                <Box className="admin-status-grid">
+                  {statusRows.map(([status, count]) => (
+                    <Box key={status} className="admin-status-item">
+                      <StatusChip status={status} />
+                      <Typography fontWeight={750}>{count}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                <Typography color="text.secondary" sx={{ py: 4 }}>
+                  No appointments today.
+                </Typography>
+              )}
+            </Paper>
+
+            <Paper className="admin-dashboard-panel">
+              <Typography variant="h6">Scheduled vs Walk-In</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Real booking totals for today.
+              </Typography>
+              <Box className="admin-booking-summary">
+                <Box>
+                  <Typography variant="h4" fontWeight={750}>
+                    {bookingTypes.scheduled ?? 0}
+                  </Typography>
+                  <Typography color="text.secondary">Scheduled</Typography>
+                </Box>
+                <Divider orientation="vertical" flexItem />
+                <Box>
+                  <Typography variant="h4" fontWeight={750}>
+                    {bookingTypes.walk_in ?? 0}
+                  </Typography>
+                  <Typography color="text.secondary">Walk-In</Typography>
+                </Box>
+              </Box>
+            </Paper>
+          </Box>
+
+          <Paper className="admin-management-panel admin-recent-appointments">
+            <Stack direction="row" sx={{ p: 2.5, justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography variant="h6">Recent Appointments</Typography>
+                <Typography variant="body2" color="text.secondary">Latest appointments scheduled today.</Typography>
+              </Box>
+              <Button component={RouterLink} to="/admin/appointments">View All</Button>
+            </Stack>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Time</TableCell>
+                    <TableCell>Patient</TableCell>
+                    <TableCell>Doctor</TableCell>
+                    <TableCell>Service</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {insightsLoading ? (
+                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4 }}><CircularProgress size={24} /></TableCell></TableRow>
+                  ) : recentAppointments.length ? (
+                    recentAppointments.map((appointment) => (
+                      <TableRow key={appointment._id} hover>
+                        <TableCell>{formatDateTime(appointment.startAt)}</TableCell>
+                        <TableCell>
+                          {appointment.patientId
+                            ? `${appointment.patientId.firstName} ${appointment.patientId.lastName}`
+                            : 'Patient unavailable'}
+                        </TableCell>
+                        <TableCell>
+                          {appointment.doctorId
+                            ? `Dr. ${appointment.doctorId.firstName} ${appointment.doctorId.lastName}`
+                            : 'Doctor unavailable'}
+                        </TableCell>
+                        <TableCell>{appointment.serviceId?.name || 'Service unavailable'}</TableCell>
+                        <TableCell><StatusChip status={appointment.status} /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4 }}>No appointments today.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
         </>
       )}
     </Box>
@@ -789,6 +969,16 @@ function RoleDashboard() {
     return (
       <ReceptionistDashboard
         user={user}
+        dashboard={dashboard}
+        loading={loading}
+        error={error}
+      />
+    )
+  }
+
+  if (role === 'admin') {
+    return (
+      <AdminDashboard
         dashboard={dashboard}
         loading={loading}
         error={error}

@@ -101,6 +101,7 @@ const formatSlotTime = (timeStr) =>
 
 function AppointmentsManagement() {
   const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [rows, setRows] = useState([])
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
   const [page, setPage] = useState(1)
@@ -412,10 +413,10 @@ function AppointmentsManagement() {
   }
 
   return (
-    <Box component="section" className={user?.role === 'receptionist' ? 'receptionist-page' : undefined} sx={{ minWidth: 0 }}>
+    <Box component="section" className={isAdmin ? 'admin-page admin-appointments-page' : user?.role === 'receptionist' ? 'receptionist-page' : undefined} sx={{ minWidth: 0 }}>
       {/* Responsive Header */}
       <Box
-        className={user?.role === 'receptionist' ? 'receptionist-page-header' : undefined}
+        className={isAdmin ? 'admin-page-header' : user?.role === 'receptionist' ? 'receptionist-page-header' : undefined}
         sx={{
           display: 'grid',
           gridTemplateColumns: {
@@ -430,14 +431,14 @@ function AppointmentsManagement() {
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="h4">Appointments</Typography>
           <Typography color="text.secondary">
-            Manage and view clinic appointments.
+            Manage clinic appointments.
           </Typography>
         </Box>
       </Box>
 
       {/* Filters */}
       <Paper
-        className={user?.role === 'receptionist' ? 'receptionist-filter-panel' : undefined}
+        className={isAdmin ? 'admin-filter-panel' : user?.role === 'receptionist' ? 'receptionist-filter-panel' : undefined}
         sx={{
           p: 2,
           mb: 3,
@@ -505,7 +506,7 @@ function AppointmentsManagement() {
       </Paper>
 
       {/* Appointments Table */}
-      <Paper className={user?.role === 'receptionist' ? 'receptionist-management-panel' : undefined} sx={{ width: '100%', overflow: 'hidden' }}>
+      <Paper className={isAdmin ? 'admin-management-panel' : user?.role === 'receptionist' ? 'receptionist-management-panel' : undefined} sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer>
           <Table>
             <TableHead>
@@ -514,6 +515,7 @@ function AppointmentsManagement() {
                 <TableCell>Doctor</TableCell>
                 <TableCell>Service</TableCell>
                 <TableCell>Date & Time</TableCell>
+                <TableCell>Booking Type</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
@@ -522,7 +524,7 @@ function AppointmentsManagement() {
               <TableState
                 loading={loading}
                 empty={!rows.length}
-                colSpan={6}
+                colSpan={7}
                 emptyMessage="No appointments found."
               />
               {!loading &&
@@ -586,6 +588,9 @@ function AppointmentsManagement() {
                         <Typography variant="caption" color="text.secondary">
                           {formatTime(row.startAt)} – {formatTime(row.endAt)}
                         </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {row.bookingType === 'walk_in' ? 'Walk-In' : 'Scheduled'}
                       </TableCell>
                       <TableCell>
                         <StatusChip status={row.status} />
@@ -687,8 +692,13 @@ function AppointmentsManagement() {
         </TableContainer>
 
         <Stack
+          className={isAdmin ? 'admin-pagination' : undefined}
           direction="row"
-          sx={{ p: 2, justifyContent: 'space-between', alignItems: 'center' }}
+          sx={{
+            p: 2,
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
         >
           <Typography variant="body2" color="text.secondary">
             {pagination.total} appointment(s)

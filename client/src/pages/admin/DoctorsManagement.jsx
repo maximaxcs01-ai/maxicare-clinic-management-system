@@ -62,10 +62,12 @@ function DoctorsManagement() {
   const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [services, setServices] = useState([])
+  const [specializations, setSpecializations] = useState([])
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
+  const [specialization, setSpecialization] = useState('')
   const [loading, setLoading] = useState(true)
   const [reload, setReload] = useState(0)
   const [dialog, setDialog] = useState(null)
@@ -77,9 +79,17 @@ function DoctorsManagement() {
   useEffect(() => {
     let active = true
 
-    getServices({ limit: 100 })
-      .then((response) => {
-        if (active) setServices(response.data.data)
+    Promise.all([getServices({ limit: 100 }), getDoctors({ limit: 100 })])
+      .then(([serviceResponse, doctorResponse]) => {
+        if (!active) return
+        setServices(serviceResponse.data.data)
+        setSpecializations(
+          [...new Set(
+            (doctorResponse.data.data || [])
+              .map((doctor) => doctor.specialization)
+              .filter(Boolean),
+          )].sort((left, right) => left.localeCompare(right)),
+        )
       })
       .catch(() => {})
 
@@ -93,7 +103,13 @@ function DoctorsManagement() {
     const timer = window.setTimeout(async () => {
       try {
         setLoading(true)
-        const response = await getDoctors({ page, limit: 10, search, status })
+        const response = await getDoctors({
+          page,
+          limit: 10,
+          search,
+          status,
+          specialization,
+        })
         if (active) {
           setRows(response.data.data)
           setPagination(response.data.pagination)
@@ -114,7 +130,7 @@ function DoctorsManagement() {
       active = false
       window.clearTimeout(timer)
     }
-  }, [page, search, status, reload])
+  }, [page, search, status, specialization, reload])
 
   const openForm = (doctor) => {
     setDialog(doctor || {})
@@ -212,8 +228,9 @@ function DoctorsManagement() {
   }
 
   return (
-    <Box component="section" sx={{ minWidth: 0 }}>
+    <Box component="section" className="admin-page admin-doctors-page" sx={{ minWidth: 0 }}>
       <Box
+        className="admin-page-header"
         sx={{
           display: 'grid',
           gridTemplateColumns: {
@@ -226,9 +243,9 @@ function DoctorsManagement() {
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h4">Doctors</Typography>
+          <Typography variant="h4">Doctors Management</Typography>
           <Typography color="text.secondary">
-            Manage doctor profiles and linked portal accounts.
+            Manage doctor profiles, specialization, schedules, and availability.
           </Typography>
         </Box>
         <Button
@@ -248,11 +265,12 @@ function DoctorsManagement() {
         </Button>
       </Box>
 
-      <Paper sx={{ p: 2.5, border: 1, borderColor: 'divider' }}>
+      <Paper className="admin-management-panel" sx={{ border: 1, borderColor: 'divider' }}>
         <Stack
+          className="admin-filter-panel"
           direction={{ xs: 'column', sm: 'row' }}
           spacing={2}
-          sx={{ mb: 2.5 }}
+          sx={{ mb: 0 }}
         >
           <TextField
             size="small"
@@ -264,6 +282,23 @@ function DoctorsManagement() {
               setPage(1)
             }}
           />
+
+          <FormControl size="small" sx={{ minWidth: 190 }}>
+            <InputLabel>Specialization</InputLabel>
+            <Select
+              label="Specialization"
+              value={specialization}
+              onChange={(event) => {
+                setSpecialization(event.target.value)
+                setPage(1)
+              }}
+            >
+              <MenuItem value="">All specializations</MenuItem>
+              {specializations.map((item) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel>Status</InputLabel>
@@ -288,8 +323,8 @@ function DoctorsManagement() {
               <TableRow>
                 <TableCell>Doctor</TableCell>
                 <TableCell>Specialization</TableCell>
-                <TableCell>PRC / License</TableCell>
-                <TableCell>Services</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Contact</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
@@ -300,8 +335,9 @@ function DoctorsManagement() {
                 rows.map((doctor) => (
                   <TableRow key={doctor._id} hover>
                     <TableCell>
-                      <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                         <DoctorAvatar
+                          className="admin-doctor-avatar"
                           imageUrl={doctor.profileImage?.url}
                           firstName={doctor.firstName}
                           lastName={doctor.lastName}
@@ -312,16 +348,14 @@ function DoctorsManagement() {
                             {doctor.firstName} {doctor.middleName} {doctor.lastName}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {doctor.doctorNumber} · {doctor.email}
+                            {doctor.doctorNumber}
                           </Typography>
                         </Box>
                       </Stack>
                     </TableCell>
                     <TableCell>{doctor.specialization}</TableCell>
-                    <TableCell>{doctor.licenseNumber}</TableCell>
-                    <TableCell>
-                      {doctor.serviceIds.map((item) => item.name).join(', ') || '—'}
-                    </TableCell>
+                    <TableCell>{doctor.email}</TableCell>
+                    <TableCell>{doctor.mobileNumber || '—'}</TableCell>
                     <TableCell>
                       <StatusChip status={doctor.status} />
                     </TableCell>
@@ -329,7 +363,7 @@ function DoctorsManagement() {
                       <Stack
                         direction="row"
                         spacing={1}
-                        justifyContent="flex-end"
+                        sx={{ justifyContent: 'flex-end' }}
                       >
                         <Tooltip title="Manage Schedule">
                           <IconButton
@@ -377,10 +411,10 @@ function DoctorsManagement() {
         </TableContainer>
 
         <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{ pt: 2 }}
+          className="admin-pagination"
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' } }}
         >
           <Typography variant="body2" color="text.secondary">
             {pagination.total} doctor(s)
@@ -399,7 +433,7 @@ function DoctorsManagement() {
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             {dialog?._id && (
-              <Stack direction="row" spacing={1.5} alignItems="center">
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                 <DoctorAvatar
                   imageUrl={dialog.profileImage?.url}
                   firstName={dialog.firstName}
@@ -538,8 +572,8 @@ function DoctorsManagement() {
         open={Boolean(confirm)}
         title="Delete doctor"
         message={`Remove ${confirm?.firstName || ''} ${confirm?.lastName || ''} from the system? This will also remove the linked portal account.`}
-        confirmText="Delete"
-        onClose={() => setConfirm(null)}
+        confirmLabel="Delete"
+        onCancel={() => setConfirm(null)}
         onConfirm={remove}
         loading={saving}
       />

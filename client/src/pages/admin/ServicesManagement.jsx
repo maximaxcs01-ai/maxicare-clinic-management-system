@@ -76,8 +76,9 @@ function ServicesManagement() {
   }
 
   return (
-    <Box component="section" sx={{ minWidth: 0 }}>
+    <Box component="section" className="admin-page admin-services-page" sx={{ minWidth: 0 }}>
       <Box
+        className="admin-page-header"
         sx={{
           display: 'grid',
           gridTemplateColumns: {
@@ -90,8 +91,8 @@ function ServicesManagement() {
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h4">Services</Typography>
-          <Typography color="text.secondary">Manage clinic services, fees, and durations.</Typography>
+          <Typography variant="h4">Services Management</Typography>
+          <Typography color="text.secondary">Manage clinic services and pricing.</Typography>
         </Box>
         <Button
           variant="contained"
@@ -109,15 +110,15 @@ function ServicesManagement() {
           Add Service
         </Button>
       </Box>
-      <Paper sx={{ p: 2.5, border: 1, borderColor: 'divider' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
+      <Paper className="admin-management-panel" sx={{ border: 1, borderColor: 'divider' }}>
+        <Stack className="admin-filter-panel" direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField size="small" label="Search services" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} fullWidth />
           <FormControl size="small" sx={{ minWidth: 180 }}><InputLabel>Status</InputLabel><Select label="Status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }}><MenuItem value="">All statuses</MenuItem><MenuItem value="active">Active</MenuItem><MenuItem value="inactive">Inactive</MenuItem></Select></FormControl>
         </Stack>
         <TableContainer><Table><TableHead><TableRow><TableCell>Service</TableCell><TableCell>Fee</TableCell><TableCell>Duration</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
           <TableBody><TableState loading={loading} empty={!rows.length} colSpan={5} />{!loading && rows.map((service) => <TableRow key={service._id} hover><TableCell><Typography fontWeight={700}>{service.name}</Typography><Typography variant="body2" color="text.secondary">{service.description}</Typography></TableCell><TableCell>₱{Number(service.fee).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</TableCell><TableCell>{service.durationMinutes} minutes</TableCell><TableCell><StatusChip status={service.status} /></TableCell><TableCell align="right"><Tooltip title="Edit"><IconButton onClick={() => openForm(service)}><EditOutlinedIcon /></IconButton></Tooltip><Tooltip title="Delete"><IconButton color="error" onClick={() => setConfirm(service)}><DeleteOutlineIcon /></IconButton></Tooltip></TableCell></TableRow>)}</TableBody>
         </Table></TableContainer>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pt: 2 }}><Typography variant="body2" color="text.secondary">{pagination.total} service(s)</Typography><Pagination page={page} count={pagination.totalPages} onChange={(_, value) => setPage(value)} color="primary" /></Stack>
+        <Stack className="admin-pagination" direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' } }}><Typography variant="body2" color="text.secondary">{pagination.total} service(s)</Typography><Pagination page={page} count={pagination.totalPages} onChange={(_, value) => setPage(value)} color="primary" /></Stack>
       </Paper>
       <Dialog open={dialog !== null} onClose={() => !saving && setDialog(null)} fullWidth maxWidth="sm"><DialogTitle>{dialog?._id ? 'Edit Service' : 'Add Service'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}><TextField required label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /><TextField required multiline minRows={3} label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /><Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}><TextField required type="number" label="Fee" inputProps={{ min: 0 }} value={form.fee} onChange={(e) => setForm({ ...form, fee: e.target.value })} fullWidth /><TextField required type="number" label="Duration (minutes)" inputProps={{ min: 1 }} value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} fullWidth /></Stack><FormControl><InputLabel>Status *</InputLabel><Select label="Status *" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}><MenuItem value="active">Active</MenuItem><MenuItem value="inactive">Inactive</MenuItem></Select></FormControl></Stack></DialogContent><DialogActions sx={{ px: 3, pb: 2.5 }}><Button onClick={() => setDialog(null)} disabled={saving}>Cancel</Button><Button variant="contained" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Service'}</Button></DialogActions></Dialog>
       <ConfirmDialog open={Boolean(confirm)} title="Delete service?" message={confirm ? `Delete ${confirm.name}? This cannot be undone.` : ''} loading={saving} onCancel={() => setConfirm(null)} onConfirm={remove} />

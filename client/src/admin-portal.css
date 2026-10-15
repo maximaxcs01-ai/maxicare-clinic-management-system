@@ -1,0 +1,294 @@
+/* Phase 14E admin portal presentation */
+.authenticated-shell-admin {
+  background: #f4f7fa;
+}
+
+.authenticated-shell-admin .MuiDrawer-paper {
+  border-right: 1px solid #e2e9ef;
+  background: #fff;
+}
+
+.authenticated-shell-admin .portal-drawer-content .MuiListItemButton-root.Mui-selected {
+  color: #155f9e;
+  background: #edf5fb;
+}
+
+.authenticated-shell-admin .portal-drawer-content .MuiListItemButton-root.Mui-selected::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #1769aa;
+  content: '';
+}
+
+.authenticated-shell-admin .portal-tagline .MuiTypography-root {
+  color: #24766d;
+  font-weight: 700;
+}
+
+.authenticated-shell-admin .MuiAppBar-root {
+  border-color: #e2e9ef;
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.authenticated-shell-admin .portal-content {
+  max-width: 1320px;
+}
+
+.admin-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.admin-page-header .MuiTypography-h4 {
+  margin-bottom: 5px;
+  color: #123653;
+  font-weight: 750;
+}
+
+.admin-page-header > .MuiButton-root {
+  min-width: 160px;
+  min-height: 44px;
+  justify-self: end;
+}
+
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.admin-summary-card {
+  min-height: 136px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 23px 24px;
+  border: 1px solid #dfe7ed;
+  border-radius: 14px !important;
+  color: inherit;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(17, 52, 78, 0.055) !important;
+  text-decoration: none;
+  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.admin-summary-card:hover {
+  border-color: #a7c3d7;
+  box-shadow: 0 8px 22px rgba(17, 52, 78, 0.085) !important;
+  transform: translateY(-2px);
+}
+
+.admin-summary-card .MuiTypography-h4 {
+  margin-top: 12px;
+  color: #123653;
+  font-weight: 750;
+}
+
+.admin-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.8fr);
+  gap: 22px;
+  margin-top: 24px;
+}
+
+.admin-dashboard-panel,
+.admin-filter-panel,
+.admin-management-panel,
+.admin-report-panel,
+.admin-profile-card {
+  min-width: 0;
+  border: 1px solid #dfe7ed;
+  border-radius: 14px !important;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(17, 52, 78, 0.05) !important;
+}
+
+.admin-dashboard-panel {
+  padding: 24px;
+}
+
+.admin-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.admin-status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 1px solid #e2e9ee;
+  border-radius: 10px;
+  background: #fafcfd;
+}
+
+.admin-booking-summary {
+  min-height: 150px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 22px;
+  align-items: center;
+  margin-top: 16px;
+  text-align: center;
+}
+
+.admin-recent-appointments {
+  margin-top: 24px;
+  overflow: hidden;
+}
+
+.admin-filter-panel {
+  margin-bottom: 20px;
+  padding: 20px;
+}
+
+.admin-management-panel {
+  overflow: hidden;
+}
+
+.admin-page .MuiTableHead-root {
+  background: #f7fafc;
+}
+
+.admin-page .MuiTableCell-head {
+  height: 50px;
+  color: #526a7d;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-page .MuiTableCell-body {
+  min-height: 58px;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  border-color: #edf1f4;
+}
+
+.admin-page .MuiTableRow-hover:hover {
+  background: #f8fbfd !important;
+}
+
+.admin-pagination {
+  min-height: 64px;
+  padding: 14px 20px;
+  border-top: 1px solid #edf1f4;
+}
+
+.admin-doctor-avatar {
+  flex: 0 0 auto;
+  border: 1px solid #d7e2e9;
+  color: #155f9e !important;
+  background: #dfeef8 !important;
+}
+
+.admin-report-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.admin-report-metric {
+  min-height: 118px;
+  padding: 20px;
+  border: 1px solid #dfe7ed;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.admin-report-metric .MuiTypography-h4 {
+  margin-top: 10px;
+  color: #123653;
+  font-weight: 750;
+}
+
+.admin-reports-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.admin-report-panel {
+  overflow: hidden;
+  padding: 22px;
+}
+
+@media (max-width: 1100px) {
+  .admin-summary-grid,
+  .admin-report-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-dashboard-grid,
+  .admin-reports-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 899px) {
+  .authenticated-shell-admin .portal-content {
+    padding: 22px 18px 32px;
+  }
+
+  .admin-page .MuiTableContainer-root,
+  .admin-page > .MuiPaper-root > .MuiBox-root {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-page-header {
+    grid-template-columns: 1fr;
+    margin-bottom: 22px;
+  }
+
+  .admin-page-header > .MuiButton-root {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .admin-summary-grid,
+  .admin-report-summary-grid,
+  .admin-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-summary-card,
+  .admin-dashboard-panel,
+  .admin-filter-panel,
+  .admin-report-panel {
+    padding: 18px;
+  }
+
+  .admin-pagination {
+    align-items: stretch !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .authenticated-shell-admin .portal-content {
+    padding: 18px 14px 28px;
+  }
+
+  .admin-page-header .MuiTypography-h4 {
+    font-size: 1.65rem;
+  }
+}

@@ -40,6 +40,7 @@ const patientCollapsedDrawerWidth = 72
 const patientSidebarStorageKey = 'patientSidebarCollapsed'
 const receptionistSidebarStorageKey = 'receptionistSidebarCollapsed'
 const doctorSidebarStorageKey = 'doctorSidebarCollapsed'
+const adminSidebarStorageKey = 'adminSidebarCollapsed'
 
 function AuthenticatedLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -53,6 +54,9 @@ function AuthenticatedLayout() {
   const [doctorSidebarCollapsed, setDoctorSidebarCollapsed] = useState(
     () => sessionStorage.getItem(doctorSidebarStorageKey) === 'true',
   )
+  const [adminSidebarCollapsed, setAdminSidebarCollapsed] = useState(
+    () => sessionStorage.getItem(adminSidebarStorageKey) === 'true',
+  )
   const { user, logout } = useAuth()
   const theme = useTheme()
   const patientDesktop = useMediaQuery('(min-width:768px)')
@@ -63,13 +67,16 @@ function AuthenticatedLayout() {
   const isPatient = user?.role === 'patient'
   const isReceptionist = user?.role === 'receptionist'
   const isDoctor = user?.role === 'doctor'
-  const usesCollapsibleSidebar = isPatient || isReceptionist || isDoctor
+  const isAdmin = user?.role === 'admin'
+  const usesCollapsibleSidebar =
+    isPatient || isReceptionist || isDoctor || isAdmin
   const desktop = usesCollapsibleSidebar ? patientDesktop : standardDesktop
   const sidebarCollapsed =
     desktop &&
     ((isPatient && patientSidebarCollapsed) ||
       (isReceptionist && receptionistSidebarCollapsed) ||
-      (isDoctor && doctorSidebarCollapsed))
+      (isDoctor && doctorSidebarCollapsed) ||
+      (isAdmin && adminSidebarCollapsed))
   const drawerWidth = usesCollapsibleSidebar
     ? sidebarCollapsed
       ? patientCollapsedDrawerWidth
@@ -100,12 +107,16 @@ function AuthenticatedLayout() {
       ? setReceptionistSidebarCollapsed
       : isDoctor
         ? setDoctorSidebarCollapsed
-        : setPatientSidebarCollapsed
+        : isAdmin
+          ? setAdminSidebarCollapsed
+          : setPatientSidebarCollapsed
     const storageKey = isReceptionist
       ? receptionistSidebarStorageKey
       : isDoctor
         ? doctorSidebarStorageKey
-        : patientSidebarStorageKey
+        : isAdmin
+          ? adminSidebarStorageKey
+          : patientSidebarStorageKey
 
     setCollapsed((collapsed) => {
       const nextValue = !collapsed

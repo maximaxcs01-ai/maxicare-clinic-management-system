@@ -323,11 +323,21 @@ function Profile() {
   }
 
   return (
-    <Box component="section">
-      <Typography component="h1" variant="h4" sx={{ mb: 3 }}>
-        Profile
-      </Typography>
-      <Card sx={{ maxWidth: 720 }}>
+    <Box
+      component="section"
+      className={user?.role === 'admin' ? 'admin-page admin-profile-page' : undefined}
+    >
+      <Box className={user?.role === 'admin' ? 'admin-page-header' : undefined}>
+        <Box>
+          <Typography component="h1" variant="h4" sx={user?.role === 'admin' ? undefined : { mb: 3 }}>
+            Profile
+          </Typography>
+          {user?.role === 'admin' && (
+            <Typography color="text.secondary">Review your administrator account information.</Typography>
+          )}
+        </Box>
+      </Box>
+      <Card className={user?.role === 'admin' ? 'admin-profile-card' : undefined} sx={{ maxWidth: 720 }}>
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
             <Avatar sx={{ width: 56, height: 56, bgcolor: 'primary.main' }}>

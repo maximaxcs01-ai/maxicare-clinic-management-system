@@ -1,5 +1,6 @@
+import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material'
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton } from '@mui/material'
 
 function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', loading, onCancel, onConfirm }) {
   const destructive = /delete|remove|archive|deactivate/i.test(`${title} ${confirmLabel}`)
@@ -12,7 +13,7 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', loading,
       fullWidth
       PaperProps={{ sx: { borderRadius: '14px', p: 0.5 } }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pt: 3 }}>
+      <DialogTitle sx={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 1.5, pt: 3, pr: 7 }}>
         <Box
           component="span"
           sx={{
@@ -29,6 +30,14 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', loading,
           <ReportProblemOutlinedIcon />
         </Box>
         {title}
+        <IconButton
+          aria-label="Close dialog"
+          onClick={onCancel}
+          disabled={loading}
+          sx={{ position: 'absolute', top: 12, right: 12 }}
+        >
+          <CloseOutlinedIcon />
+        </IconButton>
       </DialogTitle>
       <DialogContent sx={{ pl: 8.5 }}>
         <DialogContentText sx={{ color: 'text.secondary', lineHeight: 1.65 }}>

@@ -117,8 +117,6 @@ export const roleNavigation = {
       path: '/admin/appointments',
       icon: CalendarMonthOutlinedIcon,
     },
-    { label: 'Walk-Ins', path: '/admin/walk-ins', icon: PersonAddAltOutlinedIcon },
-    { label: 'Queue', path: '/admin/queue', icon: QueueOutlinedIcon },
     { label: 'Services', path: '/admin/services', icon: ScienceOutlinedIcon },
     { label: 'Users', path: '/admin/users', icon: GroupsOutlinedIcon },
     { label: 'Reports', path: '/admin/reports', icon: ReceiptLongOutlinedIcon },

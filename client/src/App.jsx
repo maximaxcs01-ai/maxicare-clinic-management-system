@@ -45,6 +45,7 @@ import './auth-polish.css'
 import './patient-portal.css'
 import './receptionist-portal.css'
 import './doctor-portal.css'
+import './admin-portal.css'
 
 function DefaultRoute() {
   const { token, user, loading } = useAuth()

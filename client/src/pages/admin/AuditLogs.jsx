@@ -4,6 +4,7 @@ import {
   Button,
   CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   MenuItem,
@@ -83,14 +84,16 @@ function AuditLogs() {
   }
 
   return (
-    <Box component="section" sx={{ width: '100%', minWidth: 0 }}>
-      <Stack spacing={0.5} sx={{ mb: 3 }}>
+    <Box component="section" className="admin-page admin-audit-page" sx={{ width: '100%', minWidth: 0 }}>
+      <Box className="admin-page-header">
+        <Box>
         <Typography variant="h4">Audit Logs</Typography>
         <Typography color="text.secondary">
-          Review sensitive account and clinical workflow actions (Asia/Manila).
+          Review sensitive system activity (Asia/Manila).
         </Typography>
-      </Stack>
-      <Paper sx={{ p: 2.5, mb: 2.5 }}>
+        </Box>
+      </Box>
+      <Paper className="admin-filter-panel">
         <Stack direction={{ xs: 'column', md: 'row' }} flexWrap="wrap" spacing={2}>
           <TextField
             label="Date from"
@@ -155,7 +158,7 @@ function AuditLogs() {
       </Paper>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Paper sx={{ p: { xs: 1, sm: 2 } }}>
+      <Paper className="admin-management-panel">
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
             <CircularProgress />
@@ -196,7 +199,15 @@ function AuditLogs() {
                 </TableBody>
               </Table>
             </Box>
-            <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+            <Stack
+              className="admin-pagination"
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' } }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                {result.pagination.total || 0} audit entr{result.pagination.total === 1 ? 'y' : 'ies'}
+              </Typography>
               <Pagination
                 count={result.pagination.totalPages || 1}
                 page={page}
@@ -221,6 +232,9 @@ function AuditLogs() {
             </Stack>
           )}
         </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button variant="outlined" onClick={() => setSelected(null)}>Close</Button>
+        </DialogActions>
       </Dialog>
     </Box>
   )
