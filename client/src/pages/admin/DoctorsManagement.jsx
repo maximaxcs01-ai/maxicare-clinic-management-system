@@ -77,6 +77,7 @@ function DoctorsManagement() {
   const [dialog, setDialog] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [showTemporaryPassword, setShowTemporaryPassword] = useState(false)
+  const [temporaryPasswordTouched, setTemporaryPasswordTouched] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirm, setConfirm] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -157,6 +158,7 @@ function DoctorsManagement() {
   const openForm = (doctor) => {
     setDialog(doctor || {})
     setShowTemporaryPassword(false)
+    setTemporaryPasswordTouched(false)
     setForm(
       doctor
         ? {
@@ -177,34 +179,46 @@ function DoctorsManagement() {
     )
   }
 
+  const closeForm = () => {
+    setDialog(null)
+    setShowTemporaryPassword(false)
+    setTemporaryPasswordTouched(false)
+  }
+
   const change = (field) => (event) =>
     setForm({ ...form, [field]: event.target.value })
 
-  const temporaryPasswordError = !dialog?._id
+  const temporaryPasswordValidationMessage = !dialog?._id
     ? form.temporaryPassword.length === 0
       ? 'Temporary password is required.'
       : form.temporaryPassword.length < 8 || form.temporaryPassword.length > 16
-        ? 'Use 8 to 16 characters.'
+        ? 'Temporary password must be 8 to 16 characters.'
         : ''
     : ''
 
-  const save = async () => {
-    const required = [
-      'firstName',
-      'lastName',
-      'email',
-      'mobileNumber',
-      'licenseNumber',
-      'specialization',
-    ]
+  const requiredFields = [
+    'firstName',
+    'lastName',
+    'email',
+    'mobileNumber',
+    'licenseNumber',
+    'specialization',
+  ]
+  const requiredFieldsComplete = requiredFields.every((field) =>
+    String(form[field] || '').trim(),
+  )
+  const formIsValid =
+    requiredFieldsComplete &&
+    form.serviceIds.length > 0 &&
+    (Boolean(dialog?._id) || !temporaryPasswordValidationMessage)
+  const showTemporaryPasswordError =
+    !dialog?._id &&
+    temporaryPasswordTouched &&
+    Boolean(temporaryPasswordValidationMessage)
 
-    if (
-      required.some((field) => !String(form[field] || '').trim()) ||
-      !form.serviceIds.length ||
-      (!dialog?._id &&
-        (form.temporaryPassword.length < 8 ||
-          form.temporaryPassword.length > 16))
-    ) {
+  const save = async () => {
+    if (!formIsValid) {
+      if (!dialog?._id) setTemporaryPasswordTouched(true)
       setNotice({
         severity: 'error',
         message: 'Complete all required fields.',
@@ -219,7 +233,7 @@ function DoctorsManagement() {
         : await createDoctor(form)
 
       setNotice({ severity: 'success', message: response.data.message })
-      setDialog(null)
+      closeForm()
       setReload((value) => value + 1)
     } catch (error) {
       setNotice({
@@ -471,7 +485,7 @@ function DoctorsManagement() {
         </Stack>
       </Paper>
 
-      <Dialog open={Boolean(dialog)} onClose={() => !saving && setDialog(null)} fullWidth maxWidth="md">
+      <Dialog open={Boolean(dialog)} onClose={() => !saving && closeForm()} fullWidth maxWidth="md">
         <DialogTitle>{dialog?._id ? 'Edit Doctor' : 'Add Doctor'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -523,13 +537,20 @@ function DoctorsManagement() {
                 label="Temporary Password"
                 type={showTemporaryPassword ? 'text' : 'password'}
                 value={form.temporaryPassword}
-                onChange={change('temporaryPassword')}
-                error={Boolean(temporaryPasswordError)}
-                helperText={temporaryPasswordError || 'Use 8 to 16 characters.'}
+                onChange={(event) => {
+                  setTemporaryPasswordTouched(true)
+                  setForm({ ...form, temporaryPassword: event.target.value })
+                }}
+                onBlur={() => setTemporaryPasswordTouched(true)}
+                error={showTemporaryPasswordError}
+                helperText={
+                  showTemporaryPasswordError
+                    ? temporaryPasswordValidationMessage
+                    : 'Use 8 to 16 characters.'
+                }
                 slotProps={{
                   htmlInput: {
                     minLength: 8,
-                    maxLength: 16,
                     autoComplete: 'new-password',
                   },
                   input: {
@@ -653,13 +674,13 @@ function DoctorsManagement() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(null)} disabled={saving}>
+          <Button onClick={closeForm} disabled={saving}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={save}
-            disabled={saving || Boolean(temporaryPasswordError)}
+            disabled={saving || !formIsValid}
           >
             {saving ? 'Saving...' : dialog?._id ? 'Save Changes' : 'Add Doctor'}
           </Button>
