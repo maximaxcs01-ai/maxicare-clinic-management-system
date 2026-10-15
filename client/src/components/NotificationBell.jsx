@@ -13,11 +13,11 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import useAuth from '../hooks/useAuth'
 import {
   getNotifications,
-  getUnreadNotificationCount,
   markAllNotificationsRead,
   markNotificationRead,
 } from '../services/notificationApi'
@@ -39,40 +39,94 @@ const relativeTime = (value) => {
 
 function NotificationBell({ role }) {
   const navigate = useNavigate()
+  const { token, user } = useAuth()
   const [anchor, setAnchor] = useState(null)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [markingAll, setMarkingAll] = useState(false)
+  const requestInFlightRef = useRef(null)
+  const requestControllerRef = useRef(null)
+  const mountedRef = useRef(false)
+  const resumeRefreshAtRef = useRef(0)
+  const eligible = Boolean(token && user && user.mustChangePassword !== true)
 
-  const refreshCount = useCallback(() => {
-    getUnreadNotificationCount()
-      .then((response) => setUnreadCount(response.data.unreadCount || 0))
-      .catch(() => {})
-  }, [])
+  const refreshNotifications = useCallback(
+    (showError = false) => {
+      if (!eligible) return Promise.resolve()
+      if (requestInFlightRef.current) return requestInFlightRef.current
+
+      const controller = new AbortController()
+      requestControllerRef.current = controller
+      if (showError) setLoading(true)
+
+      const request = getNotifications(15, { signal: controller.signal })
+        .then((response) => {
+          if (!mountedRef.current) return
+          setNotifications(response.data.data || [])
+          setUnreadCount(response.data.unreadCount || 0)
+          if (showError) setError('')
+        })
+        .catch((requestError) => {
+          if (!mountedRef.current || requestError.name === 'CanceledError') return
+          if (showError) {
+            setError(
+              requestError.response?.data?.message ||
+                'Unable to load notifications.',
+            )
+          }
+        })
+        .finally(() => {
+          if (requestInFlightRef.current === request) {
+            requestInFlightRef.current = null
+          }
+          if (requestControllerRef.current === controller) {
+            requestControllerRef.current = null
+          }
+          if (mountedRef.current && showError) setLoading(false)
+        })
+
+      requestInFlightRef.current = request
+      return request
+    },
+    [eligible],
+  )
 
   useEffect(() => {
-    refreshCount()
-    const timer = window.setInterval(refreshCount, 60000)
-    return () => window.clearInterval(timer)
-  }, [refreshCount])
+    if (!eligible) return undefined
+    mountedRef.current = true
+    const initialRefresh = window.setTimeout(refreshNotifications, 0)
 
-  const openNotifications = async (event) => {
-    setAnchor(event.currentTarget)
-    setLoading(true)
-    setError('')
-    try {
-      const response = await getNotifications()
-      setNotifications(response.data.data || [])
-      setUnreadCount(response.data.unreadCount || 0)
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message || 'Unable to load notifications.',
-      )
-    } finally {
-      setLoading(false)
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'hidden') refreshNotifications()
+    }, 15000)
+    const refreshOnResume = () => {
+      if (document.visibilityState === 'hidden') return
+      const now = Date.now()
+      if (now - resumeRefreshAtRef.current < 1000) return
+      resumeRefreshAtRef.current = now
+      refreshNotifications()
     }
+    document.addEventListener('visibilitychange', refreshOnResume)
+    window.addEventListener('focus', refreshOnResume)
+
+    return () => {
+      mountedRef.current = false
+      window.clearTimeout(initialRefresh)
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refreshOnResume)
+      window.removeEventListener('focus', refreshOnResume)
+      requestControllerRef.current?.abort()
+      requestControllerRef.current = null
+      requestInFlightRef.current = null
+    }
+  }, [eligible, refreshNotifications])
+
+  const openNotifications = (event) => {
+    setAnchor(event.currentTarget)
+    setError('')
+    refreshNotifications(true)
   }
 
   const openNotification = async (notification) => {
