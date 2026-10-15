@@ -1,5 +1,4 @@
-import { Avatar } from '@mui/material'
-import { useState } from 'react'
+import ProfileAvatar from './ProfileAvatar'
 
 function DoctorAvatar({
   imageUrl,
@@ -10,27 +9,16 @@ function DoctorAvatar({
   className,
   sx,
 }) {
-  const [failedUrl, setFailedUrl] = useState('')
-  const resolvedName = name || [firstName, lastName].filter(Boolean).join(' ')
-  const initials =
-    `${firstName?.[0] || resolvedName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
-  const usableImageUrl = imageUrl && failedUrl !== imageUrl ? imageUrl : undefined
-
   return (
-    <Avatar
+    <ProfileAvatar
+      imageUrl={imageUrl}
+      firstName={firstName}
+      lastName={lastName}
+      name={name}
+      size={size}
       className={className}
-      src={usableImageUrl}
-      alt={resolvedName ? `${resolvedName} profile` : 'Doctor profile'}
-      slotProps={{
-        img: {
-          onError: () => setFailedUrl(imageUrl || ''),
-          style: { objectFit: 'cover' },
-        },
-      }}
-      sx={{ width: size, height: size, objectFit: 'cover', ...sx }}
-    >
-      {initials || 'DR'}
-    </Avatar>
+      sx={sx}
+    />
   )
 }
 

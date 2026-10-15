@@ -4,7 +4,6 @@ import MenuIcon from '@mui/icons-material/Menu'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import {
   AppBar,
-  Avatar,
   Box,
   Divider,
   Drawer,
@@ -33,7 +32,7 @@ import { getNavigationForRole } from '../config/roleNavigation'
 import useAuth from '../hooks/useAuth'
 import { getRoleDestination } from '../utils/authRoutes'
 import BrandMark from './BrandMark'
-import DoctorAvatar from './DoctorAvatar'
+import ProfileAvatar from './ProfileAvatar'
 
 const defaultDrawerWidth = 272
 const patientDrawerWidth = 224
@@ -85,7 +84,6 @@ function AuthenticatedLayout() {
     : defaultDrawerWidth
   const roleHome = getRoleDestination(user?.role)
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ')
-  const initials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`
 
   const isItemActive = (path) =>
     location.pathname === path ||
@@ -284,26 +282,13 @@ function AuthenticatedLayout() {
               sx={{ borderRadius: 3, p: 0.5 }}
             >
               <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-                {isDoctor ? (
-                  <DoctorAvatar
-                    imageUrl={user?.profileImage?.url}
-                    firstName={user?.firstName}
-                    lastName={user?.lastName}
-                    size={38}
-                    sx={{ bgcolor: 'primary.main', fontSize: 14 }}
-                  />
-                ) : (
-                  <Avatar
-                    sx={{
-                      width: 38,
-                      height: 38,
-                      bgcolor: 'primary.main',
-                      fontSize: 14,
-                    }}
-                  >
-                    {initials.toUpperCase() || 'U'}
-                  </Avatar>
-                )}
+                <ProfileAvatar
+                  imageUrl={user?.profileImage?.url}
+                  firstName={user?.firstName}
+                  lastName={user?.lastName}
+                  size={38}
+                  sx={{ bgcolor: 'primary.main', fontSize: 14 }}
+                />
                 <Box
                   sx={{
                     display: { xs: 'none', sm: 'block' },
