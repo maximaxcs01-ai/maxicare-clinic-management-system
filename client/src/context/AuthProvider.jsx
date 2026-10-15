@@ -28,6 +28,18 @@ function AuthProvider({ children }) {
     setLoading(true)
   }, [])
 
+  const updateUser = useCallback(
+    (updates) => {
+      setUser((currentUser) => {
+        if (!currentUser) return currentUser
+        const nextUser = { ...currentUser, ...updates }
+        if (token) storeSession(token, nextUser)
+        return nextUser
+      })
+    },
+    [token],
+  )
+
   useEffect(() => {
     window.addEventListener('auth:logout', logout)
     return () => window.removeEventListener('auth:logout', logout)
@@ -43,8 +55,23 @@ function AuthProvider({ children }) {
         const response = await api.get('/auth/me')
         if (!active) return
 
-        storeSession(token, response.data.user)
-        setUser(response.data.user)
+        let currentUser = response.data.user
+        if (currentUser.role === 'doctor') {
+          try {
+            const doctorResponse = await api.get('/doctors/me')
+            currentUser = {
+              ...currentUser,
+              profileImage: doctorResponse.data.data?.profileImage,
+            }
+          } catch (doctorRequestError) {
+            const status = doctorRequestError.response?.status
+            if (status === 401 || status === 403) throw doctorRequestError
+          }
+        }
+
+        if (!active) return
+        storeSession(token, currentUser)
+        setUser(currentUser)
       } catch (requestError) {
         const status = requestError.response?.status
         if (active && (status === 401 || status === 403)) logout()
@@ -60,8 +87,8 @@ function AuthProvider({ children }) {
   }, [logout, token])
 
   const value = useMemo(
-    () => ({ token, user, loading, login, logout }),
-    [token, user, loading, login, logout],
+    () => ({ token, user, loading, login, logout, updateUser }),
+    [token, user, loading, login, logout, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

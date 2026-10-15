@@ -33,6 +33,7 @@ import { getNavigationForRole } from '../config/roleNavigation'
 import useAuth from '../hooks/useAuth'
 import { getRoleDestination } from '../utils/authRoutes'
 import BrandMark from './BrandMark'
+import DoctorAvatar from './DoctorAvatar'
 
 const defaultDrawerWidth = 272
 const patientDrawerWidth = 224
@@ -283,16 +284,26 @@ function AuthenticatedLayout() {
               sx={{ borderRadius: 3, p: 0.5 }}
             >
               <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-                <Avatar
-                  sx={{
-                    width: 38,
-                    height: 38,
-                    bgcolor: 'primary.main',
-                    fontSize: 14,
-                  }}
-                >
-                  {initials.toUpperCase() || 'U'}
-                </Avatar>
+                {isDoctor ? (
+                  <DoctorAvatar
+                    imageUrl={user?.profileImage?.url}
+                    firstName={user?.firstName}
+                    lastName={user?.lastName}
+                    size={38}
+                    sx={{ bgcolor: 'primary.main', fontSize: 14 }}
+                  />
+                ) : (
+                  <Avatar
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      bgcolor: 'primary.main',
+                      fontSize: 14,
+                    }}
+                  >
+                    {initials.toUpperCase() || 'U'}
+                  </Avatar>
+                )}
                 <Box
                   sx={{
                     display: { xs: 'none', sm: 'block' },

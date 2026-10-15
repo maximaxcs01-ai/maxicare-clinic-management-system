@@ -164,7 +164,7 @@ function PeriodEditor({ periods, onChange }) {
         onClick={() => onChange([...periods, { ...defaultPeriod }])}
         sx={{ alignSelf: 'flex-start' }}
       >
-        Add Time Period
+        Add Period
       </Button>
     </Stack>
   )
@@ -328,6 +328,11 @@ function DoctorScheduleCalendar({ schedule, editable, saving, error, onChange, o
     setOverrideOpen(false)
   }
 
+  const saveWeeklySchedule = async () => {
+    const saved = await onSave()
+    if (saved) setWeeklyOpen(false)
+  }
+
   const selectedOverride = overrideForDate(selectedDate)
   const selectedPeriods = getEffectivePeriods(selectedDate)
   const monthLabel = new Intl.DateTimeFormat('en-PH', {
@@ -435,6 +440,11 @@ function DoctorScheduleCalendar({ schedule, editable, saving, error, onChange, o
         <Paper className="doctor-calendar-side-panel">
           <Typography variant="overline" color="primary">Selected date</Typography>
           <Typography variant="h6">{formatSelectedDate(selectedDate)}</Typography>
+
+          <Typography fontWeight={750} sx={{ mt: 2.5 }}>Date Overrides</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Adjust availability for a specific date without changing the regular weekly schedule.
+          </Typography>
 
           <Box className="doctor-selected-availability">
             <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
@@ -554,7 +564,12 @@ function DoctorScheduleCalendar({ schedule, editable, saving, error, onChange, o
             })}
           </Stack>
         </DialogContent>
-        <DialogActions><Button variant="contained" onClick={() => setWeeklyOpen(false)}>Done</Button></DialogActions>
+        <DialogActions>
+          <Button onClick={() => setWeeklyOpen(false)} disabled={saving}>Cancel</Button>
+          <Button variant="contained" onClick={saveWeeklySchedule} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Schedule'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Dialog open={overrideOpen} onClose={() => setOverrideOpen(false)} fullWidth maxWidth="sm">

@@ -61,10 +61,12 @@ function DoctorSchedulePage({ readOnly = false }) {
       })
       setSchedule(response.data.schedule)
       setSuccess(response.data.message)
+      return true
     } catch (requestError) {
       setError(
         requestError.response?.data?.message || 'Unable to save schedule.',
       )
+      return false
     } finally {
       setSaving(false)
     }

@@ -40,7 +40,7 @@ function Detail({ label, value }) {
 }
 
 function Profile() {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const [patient, setPatient] = useState(null)
   const [patientLoading, setPatientLoading] = useState(user?.role === 'patient')
   const [patientError, setPatientError] = useState('')
@@ -127,6 +127,7 @@ function Profile() {
       setImageUploading(true)
       const response = await updateMyProfileImage(profileImageFile)
       setDoctor(response.data.data)
+      updateUser({ profileImage: response.data.data.profileImage })
       setDoctorError('')
       setProfileImageFile(null)
       setProfileImagePreview('')

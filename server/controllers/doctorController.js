@@ -1,4 +1,5 @@
 const service = require("../services/doctorService");
+const { recordRequestAudit } = require("../services/auditService");
 const AppError = require("../utils/AppError");
 
 const listDoctors = async (req, res, next) => { try { res.json(await service.listDoctors(req.query, req.user.role)); } catch (e) { next(e); } };
