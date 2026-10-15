@@ -7,10 +7,28 @@ const {
   validateConsultationDraft,
   validateConsultationListQuery,
   validatePrescriptionDecision,
+  validateConsultationReason,
 } = require("../validators/consultationValidator");
 
 const router = express.Router();
-router.use(protect, authorize("doctor"));
+router.use(protect);
+
+router.patch(
+  "/:id/cancel",
+  authorize("receptionist", "admin"),
+  validateConsultationId,
+  validateConsultationReason,
+  controller.cancelConsultation
+);
+router.delete(
+  "/:id",
+  authorize("admin"),
+  validateConsultationId,
+  validateConsultationReason,
+  controller.deleteConsultation
+);
+
+router.use(authorize("doctor"));
 
 router.get("/", validateConsultationListQuery, controller.listConsultations);
 router.post(

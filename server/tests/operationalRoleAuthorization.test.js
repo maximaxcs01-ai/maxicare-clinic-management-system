@@ -126,6 +126,19 @@ test("Consultation and prescription routes remain Doctor-only", () => {
   }
 });
 
+test("consultation cancellation is operational while deletion is admin-only", () => {
+  assertAllowedForOperations(
+    getRouteGuard(consultationRoutes, "/:id/cancel", "patch"),
+    ["admin", "receptionist"],
+    ["doctor", "patient"],
+  );
+  assertAllowedForOperations(
+    getRouteGuard(consultationRoutes, "/:id", "delete"),
+    ["admin"],
+    ["receptionist", "doctor", "patient"],
+  );
+});
+
 test("Only Admin and Receptionist can record triage vitals", () => {
   assertAllowedForOperations(
     getRouteGuard(appointmentRoutes, "/:id/triage", "patch"),

@@ -47,3 +47,7 @@ export const markNoPrescriptionNeeded = (id) =>
   api.patch(`/consultations/${id}/prescription-decision`, {
     decision: 'none_required',
   })
+export const cancelConsultation = (id, reason) =>
+  api.patch(`/consultations/${id}/cancel`, { reason })
+export const deleteConsultation = (id, reason) =>
+  api.delete(`/consultations/${id}`, { data: { reason } })

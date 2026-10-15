@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Appointment = require("../models/Appointment");
+const Consultation = require("../models/Consultation");
 const Doctor = require("../models/Doctor");
 const DoctorSchedule = require("../models/DoctorSchedule");
 const Patient = require("../models/Patient");
@@ -524,6 +525,19 @@ const listTodayQueue = async (user) => {
   const entries = await queuePopulation(
     QueueEntry.find(queueFilter).sort({ doctorId: 1, joinedAt: 1, _id: 1 })
   );
+  const appointmentIds = entries.map((entry) => entry.appointmentId?._id || entry.appointmentId);
+  const consultations = await Consultation.find({
+    appointmentId: { $in: appointmentIds },
+    status: "in_progress",
+  })
+    .select("_id appointmentId status")
+    .lean();
+  const consultationByAppointment = new Map(
+    consultations.map((consultation) => [
+      String(consultation.appointmentId),
+      { _id: consultation._id, status: consultation.status },
+    ])
+  );
   const positions = new Map();
   const data = entries.map((entry) => {
     const groupId = String(entry.doctorId?._id || "unknown");
@@ -532,7 +546,13 @@ const listTodayQueue = async (user) => {
       ? null
       : (positions.get(groupId) || 0) + 1;
     if (!isInConsultation) positions.set(groupId, position);
-    return { ...entry.toObject(), queuePosition: position };
+    return {
+      ...entry.toObject(),
+      queuePosition: position,
+      consultation:
+        consultationByAppointment.get(String(entry.appointmentId?._id || entry.appointmentId)) ||
+        null,
+    };
   });
   return { date, timezone: CLINIC_TIMEZONE, data };
 };

@@ -36,6 +36,7 @@ import {
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import ConsultationOperationalActions from '../components/ConsultationOperationalActions'
 import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
 import TriageVitalsDialog from '../components/TriageVitalsDialog'
@@ -1056,6 +1057,19 @@ function AppointmentsManagement() {
                   <StatusChip status={detailModal.appointment.status} />
                 </Box>
               </Box>
+
+              {detailModal.appointment.consultation && (
+                <ConsultationOperationalActions
+                  consultation={detailModal.appointment.consultation}
+                  canCancel={user?.role === 'admin' || user?.role === 'receptionist'}
+                  allowDelete={isAdmin}
+                  onCompleted={(message) => {
+                    setDetailModal({ open: false, appointment: null })
+                    setNotice({ severity: 'success', message })
+                    setRefreshKey((current) => current + 1)
+                  }}
+                />
+              )}
 
               <Divider />
 

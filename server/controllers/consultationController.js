@@ -72,6 +72,34 @@ const markNoPrescriptionNeeded = async (req, res, next) => {
   }
 };
 
+const cancelConsultation = async (req, res, next) => {
+  try {
+    const data = await service.cancelConsultation(
+      req.params.id,
+      req.user,
+      req.consultationReason,
+      req
+    );
+    res.json({ message: "Consultation cancelled and returned to the queue.", data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteConsultation = async (req, res, next) => {
+  try {
+    const data = await service.deleteConsultation(
+      req.params.id,
+      req.user,
+      req.consultationReason,
+      req
+    );
+    res.json({ message: "Consultation deleted.", data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   listConsultations,
   startConsultation,
@@ -79,4 +107,6 @@ module.exports = {
   saveDraft,
   markNoPrescriptionNeeded,
   completeConsultation,
+  cancelConsultation,
+  deleteConsultation,
 };

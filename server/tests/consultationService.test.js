@@ -3,10 +3,16 @@ const { afterEach, beforeEach, test } = require("node:test");
 const Appointment = require("../models/Appointment");
 const Consultation = require("../models/Consultation");
 const Doctor = require("../models/Doctor");
+const Patient = require("../models/Patient");
 const Prescription = require("../models/Prescription");
 const QueueEntry = require("../models/QueueEntry");
+const AuditLog = require("../models/AuditLog");
 const service = require("../services/consultationService");
-const { validateConsultationDraft } = require("../validators/consultationValidator");
+const patientRecordsService = require("../services/patientRecordsService");
+const {
+  validateConsultationDraft,
+  validateConsultationReason,
+} = require("../validators/consultationValidator");
 const { authorize } = require("../middleware/authMiddleware");
 
 const ids = {
@@ -28,8 +34,18 @@ const originalMethods = {
   consultationCreate: Consultation.create,
   consultationExists: Consultation.exists,
   consultationFindOne: Consultation.findOne,
+  consultationFind: Consultation.find,
   consultationFindOneAndUpdate: Consultation.findOneAndUpdate,
+  consultationDeleteOne: Consultation.deleteOne,
   prescriptionExists: Prescription.exists,
+  prescriptionFindOne: Prescription.findOne,
+  prescriptionDeleteOne: Prescription.deleteOne,
+  queueExists: QueueEntry.exists,
+  appointmentFindById: Appointment.findById,
+  appointmentFind: Appointment.find,
+  patientFindOne: Patient.findOne,
+  prescriptionFind: Prescription.find,
+  auditCreate: AuditLog.create,
   startSession: require("mongoose").startSession,
 };
 
@@ -59,12 +75,22 @@ const query = (resolve) => ({
 
 const matches = (record, filter) =>
   record &&
-  Object.entries(filter).every(([key, value]) => String(record[key]) === String(value));
+  Object.entries(filter).every(([key, value]) => {
+    if (value && typeof value === "object" && "$in" in value) {
+      return value.$in.some((item) => String(item) === String(record[key]));
+    }
+    if (value && typeof value === "object" && "$ne" in value) {
+      return String(record[key]) !== String(value.$ne);
+    }
+    return String(record[key]) === String(value);
+  });
 
 let appointment;
 let queueEntry;
 let consultations;
 let prescriptions;
+let queueEntries;
+let auditLogs;
 
 beforeEach(() => {
   appointment = {
@@ -74,6 +100,11 @@ beforeEach(() => {
     serviceId: ids.service,
     bookingType: "walk_in",
     status: "waiting",
+    triage: {
+      vitals: { systolic: 120, diastolic: 80 },
+      recordedBy: ids.userB,
+      recordedAt: new Date("2026-10-15T01:00:00Z"),
+    },
     statusHistory: [],
     save: async function save() {},
   };
@@ -89,6 +120,8 @@ beforeEach(() => {
   };
   consultations = [];
   prescriptions = [];
+  queueEntries = [queueEntry];
+  auditLogs = [];
 
   Doctor.findOne = (filter) =>
     query(() => {
@@ -106,16 +139,34 @@ beforeEach(() => {
         ? { _id: ids.consultation }
         : null
     );
+  Consultation.deleteOne = (filter) => ({
+    session() {
+      return this;
+    },
+    then(onFulfilled, onRejected) {
+      return Promise.resolve().then(() => {
+        const index = consultations.findIndex((item) => matches(item, filter));
+        if (index < 0) return { deletedCount: 0 };
+        consultations.splice(index, 1);
+        return { deletedCount: 1 };
+      }).then(onFulfilled, onRejected);
+    },
+  });
   Consultation.findOne = (filter) =>
     query(
       () =>
         consultations.find((consultation) => matches(consultation, filter)) ||
         null
     );
+  Consultation.find = (filter) =>
+    query(() => consultations.filter((item) => matches(item, filter)));
   Consultation.create = async ([values]) => {
     const consultation = {
       ...values,
-      _id: ids.consultation,
+      _id:
+        consultations.length === 0
+          ? ids.consultation
+          : "700000000000000000000002",
       vitals: values.vitals || {},
       save: async function save() {},
     };
@@ -134,6 +185,39 @@ beforeEach(() => {
       const prescription = prescriptions.find((item) => matches(item, filter));
       return prescription ? { _id: prescription._id } : null;
     });
+  Prescription.findOne = (filter) =>
+    query(() => prescriptions.find((item) => matches(item, filter)) || null);
+  Prescription.find = (filter) =>
+    query(() => prescriptions.filter((item) => matches(item, filter)));
+  Prescription.deleteOne = (filter) => ({
+    session() {
+      return this;
+    },
+    then(onFulfilled, onRejected) {
+      return Promise.resolve().then(() => {
+        const index = prescriptions.findIndex((item) => matches(item, filter));
+        if (index < 0) return { deletedCount: 0 };
+        prescriptions.splice(index, 1);
+        return { deletedCount: 1 };
+      }).then(onFulfilled, onRejected);
+    },
+  });
+  QueueEntry.exists = (filter) =>
+    query(() =>
+      queueEntries.some((entry) => matches(entry, filter))
+        ? { _id: ids.queue }
+        : null
+    );
+  Appointment.findById = (id) => query(() =>
+    String(id) === String(appointment._id) ? appointment : null
+  );
+  Appointment.find = () => query(() => []);
+  Patient.findOne = () => query(() => ({ _id: ids.patient }));
+  AuditLog.create = async (entries) => {
+    const created = Array.isArray(entries) ? entries : [entries];
+    auditLogs.push(...created);
+    return created;
+  };
   require("mongoose").startSession = async () => ({
     withTransaction: async (callback) => callback(),
     endSession: async () => {},
@@ -147,8 +231,18 @@ afterEach(() => {
   Consultation.create = originalMethods.consultationCreate;
   Consultation.exists = originalMethods.consultationExists;
   Consultation.findOne = originalMethods.consultationFindOne;
+  Consultation.find = originalMethods.consultationFind;
   Consultation.findOneAndUpdate = originalMethods.consultationFindOneAndUpdate;
+  Consultation.deleteOne = originalMethods.consultationDeleteOne;
   Prescription.exists = originalMethods.prescriptionExists;
+  Prescription.findOne = originalMethods.prescriptionFindOne;
+  Prescription.deleteOne = originalMethods.prescriptionDeleteOne;
+  QueueEntry.exists = originalMethods.queueExists;
+  Appointment.findById = originalMethods.appointmentFindById;
+  Appointment.find = originalMethods.appointmentFind;
+  Patient.findOne = originalMethods.patientFindOne;
+  Prescription.find = originalMethods.prescriptionFind;
+  AuditLog.create = originalMethods.auditCreate;
   require("mongoose").startSession = originalMethods.startSession;
 });
 
@@ -387,4 +481,264 @@ test("consultation authorization rejects patient and receptionist roles", () => 
     }
   );
   assert.equal(allowed, true);
+});
+
+const operationalRequest = {
+  ip: "127.0.0.1",
+  get: () => "test-agent",
+};
+
+test("receptionist cancellation returns the appointment and existing queue entry to waiting", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  const originalTriage = structuredClone(appointment.triage);
+  const result = await service.cancelConsultation(
+    ids.consultation,
+    { _id: ids.userB, role: "receptionist" },
+    "Patient requires additional preparation",
+    operationalRequest
+  );
+
+  assert.equal(result.status, "cancelled");
+  assert.equal(result.appointmentStatus, "waiting");
+  assert.equal(result.queueStatus, "waiting");
+  assert.equal(consultations[0].cancelledBy, ids.userB);
+  assert.equal(consultations[0].cancellationReason, "Patient requires additional preparation");
+  assert.equal(appointment.status, "waiting");
+  assert.deepEqual(appointment.triage, originalTriage);
+  assert.equal(queueEntry.queueStatus, "waiting");
+  assert.equal(queueEntry.active, true);
+  assert.equal(queueEntry.calledAt, null);
+  assert.equal(queueEntries.filter((entry) => entry.active).length, 1);
+  assert.equal(auditLogs[0].action, "consultation.cancelled");
+  assert.equal(auditLogs[0].metadata.appointmentStatus, "waiting");
+  assert.equal(auditLogs[0].metadata.queueStatus, "waiting");
+});
+
+test("admin can cancel an in-progress consultation", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  const result = await service.cancelConsultation(
+    ids.consultation,
+    { _id: ids.userB, role: "admin" },
+    "Operational interruption"
+  );
+  assert.equal(result.status, "cancelled");
+  assert.equal(appointment.status, "waiting");
+  assert.equal(queueEntry.queueStatus, "waiting");
+});
+
+test("doctors and patients cannot cancel consultations", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  for (const role of ["doctor", "patient"]) {
+    await assert.rejects(
+      service.cancelConsultation(
+        ids.consultation,
+        { _id: ids.userA, role },
+        "Unauthorized"
+      ),
+      { statusCode: 403 }
+    );
+  }
+  assert.equal(consultations[0].status, "in_progress");
+  assert.equal(appointment.status, "in_consultation");
+});
+
+test("cancellation blocks a second active queue entry for the patient", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  queueEntries.push({
+    _id: "300000000000000000000002",
+    patientId: ids.patient,
+    active: true,
+    queueStatus: "waiting",
+  });
+  await assert.rejects(
+    service.cancelConsultation(
+      ids.consultation,
+      { _id: ids.userB, role: "admin" },
+      "Retry"
+    ),
+    { statusCode: 409 }
+  );
+  assert.equal(consultations[0].status, "in_progress");
+  assert.equal(queueEntry.active, false);
+});
+
+test("admin deletes an eligible cancelled consultation and records durable audit", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  await service.cancelConsultation(
+    ids.consultation,
+    { _id: ids.userB, role: "admin" },
+    "Cancelled in error",
+    operationalRequest
+  );
+  prescriptions.push({
+    _id: "800000000000000000000001",
+    consultationId: ids.consultation,
+    status: "draft",
+  });
+
+  const result = await service.deleteConsultation(
+    ids.consultation,
+    { _id: ids.userB, role: "admin" },
+    "Duplicate test record",
+    operationalRequest
+  );
+  assert.equal(result.deleted, true);
+  assert.equal(consultations.length, 0);
+  assert.equal(prescriptions.length, 0);
+  assert.equal(appointment.status, "waiting");
+  assert.equal(queueEntry.active, true);
+  assert.equal(auditLogs.at(-1).action, "consultation.deleted");
+  assert.equal(auditLogs.at(-1).entityId, ids.consultation);
+  assert.equal(auditLogs.at(-1).metadata.reason, "Duplicate test record");
+});
+
+test("admin deletes an eligible erroneous in-progress consultation and restores waiting state", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  const result = await service.deleteConsultation(
+    ids.consultation,
+    { _id: ids.userB, role: "admin" },
+    "Started against the wrong record",
+    operationalRequest
+  );
+
+  assert.equal(result.deleted, true);
+  assert.equal(consultations.length, 0);
+  assert.equal(appointment.status, "waiting");
+  assert.equal(queueEntry.queueStatus, "waiting");
+  assert.equal(queueEntry.active, true);
+  assert.equal(auditLogs.at(-1).action, "consultation.deleted");
+});
+
+test("receptionists and doctors cannot delete consultations", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  for (const role of ["receptionist", "doctor"]) {
+    await assert.rejects(
+      service.deleteConsultation(
+        ids.consultation,
+        { _id: ids.userB, role },
+        "Unauthorized"
+      ),
+      { statusCode: 403 }
+    );
+  }
+  assert.equal(consultations.length, 1);
+});
+
+test("admin cannot delete completed consultation history", async () => {
+  appointment.status = "completed";
+  consultations.push({
+    _id: ids.consultation,
+    appointmentId: ids.appointment,
+    patientId: ids.patient,
+    status: "completed",
+  });
+  await assert.rejects(
+    service.deleteConsultation(
+      ids.consultation,
+      { _id: ids.userB, role: "admin" },
+      "Erroneous"
+    ),
+    {
+      statusCode: 409,
+      message:
+        "This consultation cannot be deleted because it is part of finalized medical history.",
+    }
+  );
+  assert.equal(consultations.length, 1);
+});
+
+test("admin cannot delete a consultation with an issued prescription", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  await service.cancelConsultation(
+    ids.consultation,
+    { _id: ids.userB, role: "admin" },
+    "Test cancellation"
+  );
+  prescriptions.push({
+    _id: "800000000000000000000002",
+    consultationId: ids.consultation,
+    status: "issued",
+  });
+  await assert.rejects(
+    service.deleteConsultation(
+      ids.consultation,
+      { _id: ids.userB, role: "admin" },
+      "Erroneous"
+    ),
+    { statusCode: 409 }
+  );
+  assert.equal(consultations[0].status, "cancelled");
+});
+
+test("a new consultation can start after cancellation while the cancelled record remains", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  await service.cancelConsultation(
+    ids.consultation,
+    { _id: ids.userB, role: "receptionist" },
+    "Ready to resume"
+  );
+  queueEntry.queueStatus = "called";
+  const restarted = await service.startConsultation(ids.queue, doctorUser);
+
+  assert.equal(consultations.length, 2);
+  assert.equal(consultations[0].status, "cancelled");
+  assert.equal(restarted.status, "in_progress");
+  assert.equal(restarted.triageRecordedBy, appointment.triage.recordedBy);
+  assert.equal(appointment.status, "in_consultation");
+  assert.equal(queueEntry.queueStatus, "in_consultation");
+});
+
+test("cancelled consultations remain excluded from patient completed history", async () => {
+  consultations.push(
+    {
+      _id: ids.consultation,
+      patientId: ids.patient,
+      status: "cancelled",
+    },
+    {
+      _id: "700000000000000000000002",
+      patientId: ids.patient,
+      status: "completed",
+    }
+  );
+
+  const history = await patientRecordsService.getPatientHistory({
+    _id: ids.userA,
+    role: "patient",
+  });
+  assert.deepEqual(
+    history.consultations.map((item) => item.status),
+    ["completed"]
+  );
+});
+
+test("cancellation and deletion validators require a bounded reason", () => {
+  const runValidator = (body) => {
+    const req = { body };
+    let statusCode;
+    let responseBody;
+    let advanced = false;
+    validateConsultationReason(
+      req,
+      {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(data) {
+          responseBody = data;
+        },
+      },
+      () => {
+        advanced = true;
+      }
+    );
+    return { req, statusCode, responseBody, advanced };
+  };
+
+  assert.equal(runValidator({ reason: "  " }).statusCode, 400);
+  assert.equal(runValidator({ reason: "Valid reason", extra: "not allowed" }).statusCode, 400);
+  const valid = runValidator({ reason: "  Duplicate record  " });
+  assert.equal(valid.advanced, true);
+  assert.equal(valid.req.consultationReason, "Duplicate record");
 });

@@ -1,7 +1,10 @@
 const mongoose = require("mongoose");
 const Appointment = require("../models/Appointment");
+const Consultation = require("../models/Consultation");
 const Doctor = require("../models/Doctor");
 const Patient = require("../models/Patient");
+const Prescription = require("../models/Prescription");
+const QueueEntry = require("../models/QueueEntry");
 const Service = require("../models/Service");
 const AppError = require("../utils/AppError");
 const { getPagination, buildPagination } = require("../utils/pagination");
@@ -180,7 +183,86 @@ const listAllAppointments = async (query) => {
     Appointment.countDocuments(filter),
   ]);
 
-  return { data, pagination: buildPagination(page, limit, total) };
+  const appointmentIds = data.map((appointment) => appointment._id);
+  const consultations = await Consultation.find({
+    appointmentId: { $in: appointmentIds },
+  })
+    .select("_id appointmentId status")
+    .lean();
+  const consultationIds = consultations.map((consultation) => consultation._id);
+  const patientIds = data
+    .map((appointment) => appointment.patientId?._id)
+    .filter(Boolean);
+  const [issuedPrescriptionIds, consultationQueueEntries, activeQueueEntries] =
+    await Promise.all([
+      Prescription.distinct("consultationId", {
+        consultationId: { $in: consultationIds },
+        status: "issued",
+      }),
+      QueueEntry.find({
+        appointmentId: { $in: appointmentIds },
+        queueStatus: "in_consultation",
+        active: false,
+      })
+        .select("appointmentId patientId doctorId")
+        .lean(),
+      QueueEntry.find({
+        patientId: { $in: patientIds },
+        active: true,
+        queueStatus: { $in: ["waiting", "called"] },
+      })
+        .select("patientId")
+        .lean(),
+    ]);
+  const issuedIds = new Set(issuedPrescriptionIds.map(String));
+  const activePatientIds = new Set(
+    activeQueueEntries.map((entry) => String(entry.patientId))
+  );
+  const consultationByAppointment = new Map();
+  const consultationPriority = { cancelled: 1, in_progress: 2, completed: 3 };
+  for (const consultation of consultations) {
+    const appointment = data.find(
+      (entry) => String(entry._id) === String(consultation.appointmentId)
+    );
+    const consultationKey = String(consultation.appointmentId);
+    const existing = consultationByAppointment.get(consultationKey);
+    if (
+      existing &&
+      consultationPriority[existing.status] >=
+        consultationPriority[consultation.status]
+    ) {
+      continue;
+    }
+    const matchingQueueEntry = consultationQueueEntries.some(
+      (entry) =>
+        String(entry.appointmentId) === String(consultation.appointmentId) &&
+        String(entry.patientId) === String(appointment?.patientId?._id) &&
+        String(entry.doctorId) === String(appointment?.doctorId?._id)
+    );
+    const hasActiveQueueEntry = activePatientIds.has(
+      String(appointment?.patientId?._id)
+    );
+    consultationByAppointment.set(consultationKey, {
+      _id: consultation._id,
+      status: consultation.status,
+      canDelete:
+        Boolean(appointment) &&
+        ["cancelled", "in_progress"].includes(consultation.status) &&
+        appointment?.status !== "completed" &&
+        !issuedIds.has(String(consultation._id)) &&
+        (consultation.status === "in_progress"
+          ? matchingQueueEntry && !hasActiveQueueEntry
+          : appointment?.status !== "in_consultation"),
+    });
+  }
+  return {
+    data: data.map((appointment) => ({
+      ...appointment.toObject(),
+      consultation:
+        consultationByAppointment.get(String(appointment._id)) || null,
+    })),
+    pagination: buildPagination(page, limit, total),
+  };
 };
 
 const DOCTOR_APPOINTMENT_STATUSES = [

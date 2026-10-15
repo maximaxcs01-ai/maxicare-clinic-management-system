@@ -1,15 +1,30 @@
 const assert = require("node:assert/strict");
 const { afterEach, test } = require("node:test");
+const Consultation = require("../models/Consultation");
 const Doctor = require("../models/Doctor");
 const QueueEntry = require("../models/QueueEntry");
 const queueService = require("../services/queueService");
 
 const originalFind = QueueEntry.find;
 const originalDoctorFindOne = Doctor.findOne;
+const originalConsultationFind = Consultation.find;
 
 afterEach(() => {
   QueueEntry.find = originalFind;
   Doctor.findOne = originalDoctorFindOne;
+  Consultation.find = originalConsultationFind;
+});
+
+const emptyConsultationQuery = () => ({
+  select() {
+    return this;
+  },
+  lean() {
+    return this;
+  },
+  then(resolve, reject) {
+    return Promise.resolve([]).then(resolve, reject);
+  },
 });
 
 test("operational queue includes in-consultation patients without queue positions", async () => {
@@ -34,6 +49,7 @@ test("operational queue includes in-consultation patients without queue position
     },
   ];
   let filter;
+  Consultation.find = () => emptyConsultationQuery();
   QueueEntry.find = (query) => {
     filter = query;
     return {
@@ -75,6 +91,7 @@ test("doctor queue remains scoped to active waiting and called entries", async (
       return Promise.resolve({ _id: doctorId });
     },
   });
+  Consultation.find = () => emptyConsultationQuery();
   QueueEntry.find = (query) => {
     filter = query;
     return {

@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
+import ConsultationOperationalActions from '../components/ConsultationOperationalActions'
 import TriageVitalsDialog from '../components/TriageVitalsDialog'
 import useAuth from '../hooks/useAuth'
 import { getDashboard } from '../services/dashboardApi'
@@ -389,6 +390,17 @@ function QueueManagement() {
                               alignItems: 'center',
                             }}
                           >
+                            {entry.consultation && (
+                              <ConsultationOperationalActions
+                                consultation={entry.consultation}
+                                canCancel={isOperationalStaff}
+                                onCompleted={(message) => {
+                                  setNotice({ severity: 'success', message })
+                                  setRefreshKey((current) => current + 1)
+                                }}
+                                compact
+                              />
+                            )}
                             {['waiting', 'called'].includes(entry.queueStatus) && (
                               <Button
                                 size="small"

@@ -24,12 +24,24 @@ const consultationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["in_progress", "completed"],
+      enum: ["in_progress", "completed", "cancelled"],
       default: "in_progress",
       required: true,
     },
     startedAt: { type: Date, required: true, default: Date.now },
     completedAt: { type: Date, default: null },
+    cancelledAt: { type: Date, default: null },
+    cancelledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    cancellationReason: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
     chiefComplaint: { type: String, trim: true, maxlength: 2000, default: "" },
     symptoms: { type: String, trim: true, maxlength: 5000, default: "" },
     vitals: {
@@ -74,7 +86,11 @@ const consultationSchema = new mongoose.Schema(
 
 consultationSchema.index(
   { appointmentId: 1 },
-  { unique: true, name: "consultation_appointment_unique" }
+  {
+    unique: true,
+    partialFilterExpression: { status: { $in: ["in_progress", "completed"] } },
+    name: "consultation_active_appointment_unique",
+  }
 );
 
 module.exports = mongoose.model("Consultation", consultationSchema);
