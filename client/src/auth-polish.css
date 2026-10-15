@@ -706,20 +706,72 @@
 }
 
 .register-form-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px 18px;
 }
 
 .auth-field-email {
-  grid-column: span 2;
+  grid-column: span 3;
 }
 
-.auth-field-password {
-  grid-column: span 2;
+.auth-field-mobileNumber {
+  grid-column: span 3;
+}
+
+.auth-field-password,
+.auth-field-confirmPassword {
+  grid-column: 1 / -1;
 }
 
 .register-submit {
   grid-column: 1 / -1;
+}
+
+.password-requirements {
+  display: grid;
+  gap: 5px;
+}
+
+.password-requirements-title {
+  color: #647b8c;
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.password-requirement,
+.password-match-feedback {
+  min-height: 17px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #748695;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.password-requirement svg {
+  flex: 0 0 auto;
+  font-size: 15px;
+}
+
+.password-requirement-valid,
+.password-match-feedback.is-valid {
+  color: #278266;
+}
+
+.password-requirement-invalid,
+.password-match-feedback.is-invalid {
+  color: #a13b3b;
+}
+
+.auth-verified-actions {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-verified-actions .auth-link {
+  margin: 0;
 }
 
 .field-error,
@@ -960,8 +1012,10 @@
   }
 
   .auth-field-email,
-  .auth-field-password {
-    grid-column: auto;
+  .auth-field-mobileNumber,
+  .auth-field-password,
+  .auth-field-confirmPassword {
+    grid-column: 1 / -1;
   }
 }
 
@@ -1026,6 +1080,13 @@
   .register-form-grid {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+
+  .auth-field-email,
+  .auth-field-mobileNumber,
+  .auth-field-password,
+  .auth-field-confirmPassword {
+    grid-column: 1;
   }
 
   .register-submit {

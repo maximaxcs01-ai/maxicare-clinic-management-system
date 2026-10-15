@@ -4,6 +4,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
+import RadioButtonUncheckedOutlinedIcon from '@mui/icons-material/RadioButtonUncheckedOutlined'
 import {
   Alert,
   Box,
@@ -27,6 +28,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DoctorAvatar from '../components/DoctorAvatar'
+import ServiceTypeIcon from '../components/ServiceTypeIcon'
 import { createAppointment } from '../services/appointmentApi'
 import { getOwnPatient } from '../services/patientApi'
 import { getAvailability } from '../services/scheduleApi'
@@ -355,40 +357,72 @@ function BookAppointment() {
                   {services.map((service) => (
                     <Card
                       key={service._id}
+                      className={`booking-service-card${selectedServiceId === service._id ? ' is-selected' : ''}`}
                       variant="outlined"
                       sx={{
                         borderColor:
                           selectedServiceId === service._id ? 'primary.main' : 'divider',
+                        borderWidth: selectedServiceId === service._id ? 2 : 1,
                         bgcolor:
                           selectedServiceId === service._id
-                            ? 'rgba(37, 99, 166, 0.05)'
+                            ? 'rgba(37, 99, 166, 0.055)'
                             : 'background.paper',
                       }}
                     >
-                      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                         <FormControlLabel
+                          className="booking-service-option"
                           value={service._id}
-                          control={<Radio />}
+                          control={<Radio className="booking-service-radio" />}
                           label={
-                            <Box sx={{ width: '100%', minWidth: 0 }}>
-                              <Stack direction="row" justifyContent="space-between" gap={1}>
-                                <Typography fontWeight={700}>{service.name}</Typography>
-                                {selectedServiceId === service._id && (
-                                  <CheckCircleOutlinedIcon color="primary" fontSize="small" />
+                            <Stack
+                              className="booking-service-content"
+                              direction="row"
+                              alignItems="center"
+                              spacing={1.75}
+                            >
+                              <Box className="booking-service-icon">
+                                <ServiceTypeIcon
+                                  serviceName={service.name}
+                                  sx={{ fontSize: 26 }}
+                                />
+                              </Box>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography
+                                  className="booking-service-name"
+                                  fontWeight={700}
+                                >
+                                  {service.name}
+                                </Typography>
+                                {service.description && (
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    className="booking-service-description"
+                                  >
+                                    {service.description}
+                                  </Typography>
                                 )}
-                              </Stack>
-                              <Typography variant="body2" color="text.secondary">
-                                {service.description}
-                              </Typography>
-                              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                {service.durationMinutes} minutes · ₱
-                                {Number(service.fee).toLocaleString('en-PH', {
-                                  minimumFractionDigits: 2,
-                                })}
-                              </Typography>
-                            </Box>
+                                <Typography
+                                  variant="body2"
+                                  className="booking-service-meta"
+                                >
+                                  {service.durationMinutes} minutes · ₱
+                                  {Number(service.fee).toLocaleString('en-PH', {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </Typography>
+                              </Box>
+                              <Box className="booking-service-indicator">
+                                {selectedServiceId === service._id ? (
+                                  <CheckCircleOutlinedIcon color="primary" />
+                                ) : (
+                                  <RadioButtonUncheckedOutlinedIcon />
+                                )}
+                              </Box>
+                            </Stack>
                           }
-                          sx={{ m: 0, width: '100%' }}
+                          sx={{ m: 0, width: '100%', alignItems: 'stretch' }}
                         />
                       </CardContent>
                     </Card>

@@ -119,6 +119,8 @@ const verifyPendingPatient = async ({ email, otp }) => {
 
   const session = await mongoose.startSession();
 
+  let verifiedUser;
+
   try {
     await session.withTransaction(async () => {
       const currentPending = await PendingRegistration.findById(
@@ -156,6 +158,7 @@ const verifyPendingPatient = async ({ email, otp }) => {
         ],
         { session }
       );
+      verifiedUser = user;
 
       const patientNumber = await getNextPatientNumber(session);
 
@@ -184,6 +187,8 @@ const verifyPendingPatient = async ({ email, otp }) => {
   } finally {
     await session.endSession();
   }
+
+  return verifiedUser;
 };
 
 const resendRegistrationOtp = async ({ email }) => {

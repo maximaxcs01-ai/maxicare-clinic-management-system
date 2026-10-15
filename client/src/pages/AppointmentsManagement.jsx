@@ -4,6 +4,8 @@ import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import EventRepeatOutlinedIcon from '@mui/icons-material/EventRepeatOutlined'
 import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined'
+import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import QueueOutlinedIcon from '@mui/icons-material/QueueOutlined'
 import {
   Alert,
@@ -521,8 +523,8 @@ function AppointmentsManagement() {
 
       {/* Appointments Table */}
       <Paper className={isAdmin ? 'admin-management-panel' : user?.role === 'receptionist' ? 'receptionist-management-panel' : undefined} sx={{ width: '100%', overflow: 'hidden' }}>
-        <TableContainer>
-          <Table>
+        <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+          <Table sx={{ minWidth: { xs: 1080, md: 0 } }}>
             <TableHead>
               <TableRow>
                 <TableCell>Patient</TableCell>
@@ -622,15 +624,22 @@ function AppointmentsManagement() {
                       <TableCell align="right">
                         <Stack
                           direction="row"
-                          spacing={0.5}
-                          sx={{ justifyContent: 'flex-end' }}
+                          useFlexGap
+                          flexWrap="wrap"
+                          spacing={1}
+                          sx={{
+                            justifyContent: 'flex-end',
+                            maxWidth: { xs: 250, sm: 360, lg: 'none' },
+                            ml: 'auto',
+                          }}
                         >
                           {isPending && (
                             <>
                               <Tooltip title="Confirm Appointment">
                                 <IconButton
-                                  size="small"
+                                  size="medium"
                                   color="success"
+                                  sx={{ minWidth: 40, minHeight: 40 }}
                                   onClick={() => handleOpenConfirm(row)}
                                 >
                                   <CheckCircleOutlinedIcon fontSize="small" />
@@ -638,8 +647,9 @@ function AppointmentsManagement() {
                               </Tooltip>
                               <Tooltip title="Reject Appointment">
                                 <IconButton
-                                  size="small"
+                                  size="medium"
                                   color="error"
+                                  sx={{ minWidth: 40, minHeight: 40 }}
                                   onClick={() => handleOpenReject(row)}
                                 >
                                   <CloseOutlinedIcon fontSize="small" />
@@ -650,8 +660,9 @@ function AppointmentsManagement() {
                           {canReschedule && (
                             <Tooltip title="Reschedule">
                               <IconButton
-                                size="small"
+                                size="medium"
                                 color="primary"
+                                sx={{ minWidth: 40, minHeight: 40 }}
                                 onClick={() => handleOpenReschedule(row)}
                               >
                                 <EventRepeatOutlinedIcon fontSize="small" />
@@ -662,9 +673,10 @@ function AppointmentsManagement() {
                             <Tooltip title="Check in patient">
                               <span>
                                 <IconButton
-                                  size="small"
+                                  size="medium"
                                   color="primary"
                                   disabled={Boolean(queueActionId)}
+                                  sx={{ minWidth: 40, minHeight: 40 }}
                                   onClick={() =>
                                     handleAppointmentQueueAction(
                                       row,
@@ -681,9 +693,10 @@ function AppointmentsManagement() {
                             <Tooltip title="Add checked-in patient to queue">
                               <span>
                                 <IconButton
-                                  size="small"
+                                  size="medium"
                                   color="success"
                                   disabled={Boolean(queueActionId)}
+                                  sx={{ minWidth: 40, minHeight: 40 }}
                                   onClick={() =>
                                     handleAppointmentQueueAction(
                                       row,
@@ -698,9 +711,25 @@ function AppointmentsManagement() {
                           )}
                           {canRecordVitals && (
                             <Button
-                              size="small"
+                              size="medium"
                               variant="outlined"
+                              startIcon={
+                                row.triage?.recordedAt ? (
+                                  <EditNoteOutlinedIcon />
+                                ) : (
+                                  <MonitorHeartOutlinedIcon />
+                                )
+                              }
                               onClick={() => setTriageAppointment(row)}
+                              sx={{
+                                minHeight: 40,
+                                px: 1.75,
+                                py: 0.875,
+                                borderRadius: 2,
+                                fontSize: '0.875rem',
+                                fontWeight: 650,
+                                whiteSpace: 'nowrap',
+                              }}
                             >
                               {row.triage?.recordedAt
                                 ? 'View / Update Vitals'
@@ -709,7 +738,8 @@ function AppointmentsManagement() {
                           )}
                           <Tooltip title="View Details & Audit Log">
                             <IconButton
-                              size="small"
+                              size="medium"
+                              sx={{ minWidth: 40, minHeight: 40 }}
                               onClick={() =>
                                 setDetailModal({ open: true, appointment: row })
                               }

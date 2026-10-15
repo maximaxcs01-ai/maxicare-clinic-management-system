@@ -83,22 +83,36 @@ function ConsultationOperationalActions({
       >
         {canCancel && consultation.status === 'in_progress' && (
           <Button
-            size="small"
+            size="medium"
             color="warning"
             variant="outlined"
             startIcon={<BlockOutlinedIcon />}
             onClick={() => openDialog('cancel')}
+            sx={{
+              minHeight: 40,
+              px: 1.75,
+              borderRadius: 2,
+              fontWeight: 650,
+              whiteSpace: 'nowrap',
+            }}
           >
             Cancel Consultation
           </Button>
         )}
         {canDelete && (
           <Button
-            size="small"
+            size="medium"
             color="error"
             variant="outlined"
             startIcon={<DeleteOutlineOutlinedIcon />}
             onClick={() => openDialog('delete')}
+            sx={{
+              minHeight: 40,
+              px: 1.75,
+              borderRadius: 2,
+              fontWeight: 650,
+              whiteSpace: 'nowrap',
+            }}
           >
             Delete Consultation
           </Button>

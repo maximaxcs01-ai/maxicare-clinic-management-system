@@ -198,7 +198,107 @@
 .booking-page .MuiRadioGroup-root .MuiCard-root {
   border-radius: 12px;
   box-shadow: none;
-  transition: border-color 140ms ease, background-color 140ms ease;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.booking-service-grid .booking-service-card:hover {
+  border-color: #9abbd3;
+  background-color: #fbfdff;
+  box-shadow: 0 5px 16px rgba(18, 54, 83, 0.07);
+  transform: translateY(-1px);
+}
+
+.booking-service-grid .booking-service-card.is-selected {
+  border-color: #2563a6;
+  background-color: #f3f8fc;
+  box-shadow: 0 4px 14px rgba(37, 99, 166, 0.09);
+}
+
+.booking-service-grid .MuiCardContent-root {
+  min-height: 118px;
+  display: flex;
+  align-items: center;
+}
+
+.booking-service-grid .booking-service-option {
+  position: relative;
+  min-height: 84px;
+  align-items: stretch;
+}
+
+.booking-service-grid .booking-service-option .MuiFormControlLabel-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.booking-service-grid .booking-service-radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.booking-service-option:has(.booking-service-radio input:focus-visible) {
+  outline: 2px solid #2563a6;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.booking-service-content {
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+.booking-service-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #dce8f0;
+  border-radius: 12px;
+  color: #2563a6;
+  background-color: #f0f6fb;
+}
+
+.booking-service-card.is-selected .booking-service-icon {
+  border-color: #c0d8ea;
+  color: #155f9e;
+  background-color: #e7f1f8;
+}
+
+.booking-service-name {
+  color: #123653;
+  font-size: 0.96rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.booking-service-description {
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+.booking-service-meta {
+  margin-top: 8px;
+  color: #285a78;
+  font-weight: 650;
+}
+
+.booking-service-indicator {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: #94a8b8;
 }
 
 .booking-doctor-card:hover {

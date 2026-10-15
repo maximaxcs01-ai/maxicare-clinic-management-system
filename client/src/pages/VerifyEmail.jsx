@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import MarkEmailReadOutlinedIcon from '@mui/icons-material/MarkEmailReadOutlined'
 import AuthPage from '../components/AuthPage'
 import OtpInput from '../components/OtpInput'
 import api from '../services/api'
+import useAuth from '../hooks/useAuth'
 
 const OTP_LENGTH = 6
 
@@ -22,6 +23,8 @@ function getInitialCooldown() {
 
 function VerifyEmail() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { login } = useAuth()
   const email =
     location.state?.email ||
     sessionStorage.getItem('pendingVerificationEmail') ||
@@ -58,13 +61,20 @@ function VerifyEmail() {
       setError('')
       setMessage('')
       const response = await api.post('/auth/verify-email', { email, otp })
+      if (!response.data.token || response.data.user?.role !== 'patient') {
+        throw new Error('Unable to start your session. Please sign in.')
+      }
+
+      login(response.data.token, response.data.user)
       setVerified(true)
-      setMessage(response.data.message || 'Email verified successfully.')
+      setMessage('Email verified successfully. Signing you in...')
       sessionStorage.removeItem('pendingVerificationEmail')
       sessionStorage.removeItem('otpCooldownUntil')
+      window.setTimeout(() => navigate('/patient', { replace: true }), 650)
     } catch (requestError) {
       setError(
         requestError.response?.data?.message ||
+          requestError.message ||
           'Unable to verify the code. Please try again.',
       )
     } finally {
@@ -126,9 +136,16 @@ function VerifyEmail() {
         {message && <div className="message success-message" role="status">{message}</div>}
 
         {verified ? (
-          <p className="auth-link">
-            Verification is complete. <Link to="/login">Proceed to Login</Link>
-          </p>
+          <div className="auth-verified-actions">
+            <p className="auth-link">Your Patient portal is opening now.</p>
+            <button
+              className="auth-submit-button"
+              type="button"
+              onClick={() => navigate('/patient', { replace: true })}
+            >
+              Continue to Patient Portal
+            </button>
+          </div>
         ) : (
           <form onSubmit={handleVerify}>
             <p className="otp-instruction">Your code is valid for a limited time.</p>

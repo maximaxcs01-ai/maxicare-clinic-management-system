@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { createAuthSession } = require("../services/authSessionService");
 const {
   registerPendingPatient,
   verifyPendingPatient,
@@ -32,8 +32,12 @@ const registerUser = async (req, res, next) => {
 
 const verifyEmail = async (req, res, next) => {
   try {
-    await verifyPendingPatient(req.validatedAuth);
-    res.status(201).json({ message: "Email verified successfully." });
+    const user = await verifyPendingPatient(req.validatedAuth);
+    const authSession = createAuthSession(user);
+    res.status(201).json({
+      message: "Email verified successfully.",
+      ...authSession,
+    });
   } catch (error) {
     next(error);
   }
@@ -102,29 +106,11 @@ const loginUser = async (req, res, next) => {
       });
     }
 
-    const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-        tokenVersion: user.tokenVersion || 0,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || "1d",
-      }
-    );
+    const authSession = createAuthSession(user);
 
     res.status(200).json({
       message: "Login successful",
-      token,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        middleName: user.middleName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-      },
+      ...authSession,
     });
   } catch (error) {
     next(error);
