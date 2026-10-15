@@ -12,6 +12,20 @@ const APPOINTMENT_STATUSES = [
   "no_show",
 ];
 
+const vitalsSchema = new mongoose.Schema(
+  {
+    systolic: { type: Number, min: 0, max: 400, default: null },
+    diastolic: { type: Number, min: 0, max: 300, default: null },
+    temperature: { type: Number, min: 20, max: 50, default: null },
+    pulse: { type: Number, min: 0, max: 300, default: null },
+    respiratoryRate: { type: Number, min: 0, max: 100, default: null },
+    oxygenSaturation: { type: Number, min: 0, max: 100, default: null },
+    weight: { type: Number, min: 0, max: 1000, default: null },
+    height: { type: Number, min: 0, max: 300, default: null },
+  },
+  { _id: false }
+);
+
 const appointmentSchema = new mongoose.Schema(
   {
     patientId: {
@@ -50,6 +64,14 @@ const appointmentSchema = new mongoose.Schema(
     checkedInBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+    },
+    triage: {
+      vitals: { type: vitalsSchema, default: undefined },
+      recordedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+      recordedAt: { type: Date },
     },
     rescheduleCount: { type: Number, default: 0, min: 0 },
     cancelledAt: { type: Date },

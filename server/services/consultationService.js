@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Appointment = require("../models/Appointment");
 const Consultation = require("../models/Consultation");
 const Doctor = require("../models/Doctor");
+const Prescription = require("../models/Prescription");
 const QueueEntry = require("../models/QueueEntry");
 const AppError = require("../utils/AppError");
 const { buildPagination, getPagination } = require("../utils/pagination");
@@ -29,7 +30,8 @@ const populateConsultation = (query) =>
   query
     .populate("patientId", "patientNumber firstName middleName lastName dateOfBirth sex")
     .populate("serviceId", "name durationMinutes")
-    .populate("appointmentId", "bookingType");
+    .populate("appointmentId", "bookingType")
+    .populate("triageRecordedBy", "firstName lastName role");
 
 const startConsultation = async (queueEntryId, user, request) => {
   assertObjectId(queueEntryId, "queue entry");
@@ -81,6 +83,12 @@ const startConsultation = async (queueEntryId, user, request) => {
             serviceId: appointment.serviceId,
             status: "in_progress",
             startedAt,
+            vitals:
+              appointment.triage?.vitals?.toObject?.() ||
+              appointment.triage?.vitals ||
+              undefined,
+            triageRecordedBy: appointment.triage?.recordedBy || null,
+            triageRecordedAt: appointment.triage?.recordedAt || null,
             createdBy: user._id,
             updatedBy: user._id,
           },
@@ -191,6 +199,67 @@ const saveDraft = async (consultationId, user, draft) => {
   );
 };
 
+const markNoPrescriptionNeeded = async (consultationId, user, request) => {
+  assertObjectId(consultationId, "consultation");
+  const doctor = await getDoctorForUser(user._id);
+  const issuedPrescription = await Prescription.exists({
+    consultationId,
+    doctorId: doctor._id,
+    status: "issued",
+  });
+  if (issuedPrescription) {
+    throw new AppError(
+      "An issued prescription already resolves this consultation.",
+      409
+    );
+  }
+
+  const consultation = await Consultation.findOneAndUpdate(
+    {
+      _id: consultationId,
+      doctorId: doctor._id,
+      status: "in_progress",
+    },
+    {
+      $set: {
+        prescriptionDecision: "none_required",
+        updatedBy: user._id,
+      },
+    },
+    { new: true, runValidators: true }
+  );
+  if (!consultation) {
+    const existing = await Consultation.findOne({
+      _id: consultationId,
+      doctorId: doctor._id,
+    }).select("status");
+    if (!existing) throw new AppError("Consultation not found", 404);
+    throw new AppError("Completed consultations are read-only.", 409);
+  }
+
+  if (request) {
+    await recordAudit(
+      {
+        actorUserId: user._id,
+        actorRole: user.role,
+        action: "consultation.no_prescription_needed",
+        entityType: "Consultation",
+        entityId: consultation._id,
+        patientId: consultation.patientId,
+        description: "No prescription needed decision recorded.",
+        metadata: {
+          consultationId: consultation._id,
+          patientId: consultation.patientId,
+          status: consultation.status,
+        },
+      },
+      request
+    );
+  }
+
+  return getConsultation(consultationId, user);
+};
+
 const completeConsultation = async (consultationId, user, draft, request) => {
   assertObjectId(consultationId, "consultation");
   if (
@@ -218,6 +287,20 @@ const completeConsultation = async (consultationId, user, draft, request) => {
         }).session(session);
         if (!exists) throw new AppError("Consultation not found", 404);
         throw new AppError("Completed consultations are read-only.", 409);
+      }
+
+      if (consultation.prescriptionDecision !== "none_required") {
+        const issuedPrescription = await Prescription.exists({
+          consultationId: consultation._id,
+          doctorId: doctor._id,
+          status: "issued",
+        }).session(session);
+        if (!issuedPrescription) {
+          throw new AppError(
+            "Complete the prescription decision before completing the consultation.",
+            400
+          );
+        }
       }
 
       const appointment = await Appointment.findOne({
@@ -300,5 +383,6 @@ module.exports = {
   getConsultation,
   listConsultations,
   saveDraft,
+  markNoPrescriptionNeeded,
   completeConsultation,
 };

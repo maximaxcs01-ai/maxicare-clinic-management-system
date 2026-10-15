@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
+import TriageVitalsDialog from '../components/TriageVitalsDialog'
 import useAuth from '../hooks/useAuth'
 import { getDashboard } from '../services/dashboardApi'
 import {
@@ -62,6 +63,7 @@ function QueueManagement() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [busyKey, setBusyKey] = useState('')
   const [notice, setNotice] = useState(null)
+  const [triageAppointment, setTriageAppointment] = useState(null)
   const [removeDialog, setRemoveDialog] = useState({
     open: false,
     entry: null,
@@ -353,6 +355,16 @@ function QueueManagement() {
                       <TableCell>{formatTime(entry.joinedAt)}</TableCell>
                       <TableCell>
                         <StatusChip status={entry.queueStatus} />
+                        <Typography
+                          variant="caption"
+                          color={entry.appointmentId?.triage?.recordedAt ? 'success.main' : 'text.secondary'}
+                          sx={{ display: 'block', mt: 0.75 }}
+                        >
+                          Vitals:{' '}
+                          {entry.appointmentId?.triage?.recordedAt
+                            ? '✓ Recorded'
+                            : 'Not recorded'}
+                        </Typography>
                       </TableCell>
                       <TableCell align="right">
                         {isDoctor ? (
@@ -377,6 +389,22 @@ function QueueManagement() {
                               alignItems: 'center',
                             }}
                           >
+                            {['waiting', 'called'].includes(entry.queueStatus) && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() =>
+                                  setTriageAppointment({
+                                    ...entry.appointmentId,
+                                    patientId: entry.patientId,
+                                  })
+                                }
+                              >
+                                {entry.appointmentId?.triage?.recordedAt
+                                  ? 'View / Update Vitals'
+                                  : 'Record Vitals'}
+                              </Button>
+                            )}
                             {isFirstWaiting && (
                               <Button
                                 size="small"
@@ -520,6 +548,17 @@ function QueueManagement() {
           </Alert>
         ) : undefined}
       </Snackbar>
+      <TriageVitalsDialog
+        key={`${triageAppointment?._id || 'closed'}-${triageAppointment?.triage?.recordedAt || ''}`}
+        appointment={triageAppointment}
+        open={Boolean(triageAppointment)}
+        onClose={() => setTriageAppointment(null)}
+        onSaved={(_, message) => {
+          setTriageAppointment(null)
+          setNotice({ severity: 'success', message })
+          setRefreshKey((current) => current + 1)
+        }}
+      />
     </Box>
   )
 }

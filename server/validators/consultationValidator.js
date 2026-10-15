@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { normalizeVitals } = require("./vitalsValidator");
 
 const TEXT_FIELDS = {
   chiefComplaint: 2000,
@@ -7,17 +8,6 @@ const TEXT_FIELDS = {
   treatmentPlan: 5000,
   instructions: 5000,
   privateNotes: 10000,
-};
-
-const VITALS = {
-  systolic: { min: 0, max: 400, integer: true },
-  diastolic: { min: 0, max: 300, integer: true },
-  temperature: { min: 20, max: 50 },
-  pulse: { min: 0, max: 300, integer: true },
-  respiratoryRate: { min: 0, max: 100, integer: true },
-  oxygenSaturation: { min: 0, max: 100 },
-  weight: { min: 0, max: 1000 },
-  height: { min: 0, max: 300 },
 };
 
 const validateConsultationId = (req, res, next) => {
@@ -50,31 +40,10 @@ const validateConsultationDraft = (requireCompletion = false) => (
     draft[field] = value.trim();
   }
 
-  const incomingVitals = body.vitals || {};
-  if (
-    typeof incomingVitals !== "object" ||
-    Array.isArray(incomingVitals)
-  ) {
-    return res.status(400).json({ message: "Invalid vitals" });
-  }
-
-  draft.vitals = {};
-  for (const [field, constraints] of Object.entries(VITALS)) {
-    const value = incomingVitals[field];
-    if (value == null || value === "") {
-      draft.vitals[field] = null;
-      continue;
-    }
-    if (
-      typeof value !== "number" ||
-      !Number.isFinite(value) ||
-      value < constraints.min ||
-      value > constraints.max ||
-      (constraints.integer && !Number.isInteger(value))
-    ) {
-      return res.status(400).json({ message: `Invalid ${field} value` });
-    }
-    draft.vitals[field] = value;
+  try {
+    draft.vitals = normalizeVitals(body.vitals || {});
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
   }
 
   if (
@@ -101,9 +70,18 @@ const validateConsultationListQuery = (req, res, next) => {
   next();
 };
 
+const validatePrescriptionDecision = (req, res, next) => {
+  if (req.body?.decision !== "none_required") {
+    return res.status(400).json({ message: "Invalid prescription decision" });
+  }
+  req.prescriptionDecision = "none_required";
+  next();
+};
+
 module.exports = {
   validateConsultationId,
   validateQueueEntryId,
   validateConsultationDraft,
   validateConsultationListQuery,
+  validatePrescriptionDecision,
 };

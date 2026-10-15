@@ -52,7 +52,7 @@ const queuePopulation = (query) =>
     .populate("patientId", "patientNumber firstName middleName lastName mobileNumber email")
     .populate("doctorId", "doctorNumber firstName middleName lastName specialization")
     .populate("serviceId", "name description durationMinutes fee")
-    .populate("appointmentId", "bookingType status startAt endAt");
+    .populate("appointmentId", "bookingType status startAt endAt triage");
 
 const appointmentPopulation = (query) =>
   query

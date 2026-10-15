@@ -6,6 +6,7 @@ const {
   validateQueueEntryId,
   validateConsultationDraft,
   validateConsultationListQuery,
+  validatePrescriptionDecision,
 } = require("../validators/consultationValidator");
 
 const router = express.Router();
@@ -23,6 +24,12 @@ router.patch(
   validateConsultationId,
   validateConsultationDraft(),
   controller.saveDraft
+);
+router.patch(
+  "/:id/prescription-decision",
+  validateConsultationId,
+  validatePrescriptionDecision,
+  controller.markNoPrescriptionNeeded
 );
 router.post(
   "/:id/complete",

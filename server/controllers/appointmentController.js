@@ -197,6 +197,39 @@ const addAppointmentToQueue = async (req, res, next) => {
   }
 };
 
+const recordTriageVitals = async (req, res, next) => {
+  try {
+    const result = await service.recordTriageVitals(
+      req.params.id,
+      req.user,
+      req.validatedTriageVitals
+    );
+    const appointment = result.appointment;
+    await recordRequestAudit(req, {
+      action: result.updated ? "triage.vitals_updated" : "triage.vitals_recorded",
+      entityType: "Appointment",
+      entityId: appointment._id,
+      patientId: appointment.patientId?._id || appointment.patientId,
+      description: result.updated
+        ? "Pre-consultation vitals updated."
+        : "Pre-consultation vitals recorded.",
+      metadata: {
+        appointmentId: appointment._id,
+        patientId: appointment.patientId?._id || appointment.patientId,
+        status: appointment.status,
+      },
+    });
+    res.json({
+      message: result.updated
+        ? "Vitals updated successfully."
+        : "Vitals recorded successfully.",
+      data: appointment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createAppointment,
   listMyAppointments,
@@ -210,4 +243,5 @@ module.exports = {
   rescheduleAppointment,
   checkInAppointment,
   addAppointmentToQueue,
+  recordTriageVitals,
 };

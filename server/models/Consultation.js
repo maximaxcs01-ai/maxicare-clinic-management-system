@@ -42,6 +42,18 @@ const consultationSchema = new mongoose.Schema(
       weight: { type: Number, min: 0, max: 1000, default: null },
       height: { type: Number, min: 0, max: 300, default: null },
     },
+    triageRecordedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    triageRecordedAt: { type: Date, default: null },
+    prescriptionDecision: {
+      type: String,
+      enum: ["pending", "none_required"],
+      default: "pending",
+      required: true,
+    },
     diagnosis: { type: String, trim: true, maxlength: 5000, default: "" },
     treatmentPlan: { type: String, trim: true, maxlength: 5000, default: "" },
     instructions: { type: String, trim: true, maxlength: 5000, default: "" },

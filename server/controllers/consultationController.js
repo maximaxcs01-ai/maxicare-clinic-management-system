@@ -59,10 +59,24 @@ const completeConsultation = async (req, res, next) => {
   }
 };
 
+const markNoPrescriptionNeeded = async (req, res, next) => {
+  try {
+    const data = await service.markNoPrescriptionNeeded(
+      req.params.id,
+      req.user,
+      req
+    );
+    res.json({ message: "No prescription needed decision saved.", data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   listConsultations,
   startConsultation,
   getConsultation,
   saveDraft,
+  markNoPrescriptionNeeded,
   completeConsultation,
 };

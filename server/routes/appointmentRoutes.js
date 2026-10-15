@@ -10,6 +10,7 @@ const {
   validateAppointmentCancellation,
   validateAppointmentReschedule,
 } = require("../validators/appointmentValidator");
+const { validateTriageVitals } = require("../validators/triageValidator");
 
 const router = express.Router();
 
@@ -79,6 +80,13 @@ router.post(
   "/:id/queue",
   authorize("admin", "receptionist"),
   controller.addAppointmentToQueue
+);
+
+router.patch(
+  "/:id/triage",
+  authorize("admin", "receptionist"),
+  validateTriageVitals,
+  controller.recordTriageVitals
 );
 
 router.patch(

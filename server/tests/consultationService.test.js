@@ -3,6 +3,7 @@ const { afterEach, beforeEach, test } = require("node:test");
 const Appointment = require("../models/Appointment");
 const Consultation = require("../models/Consultation");
 const Doctor = require("../models/Doctor");
+const Prescription = require("../models/Prescription");
 const QueueEntry = require("../models/QueueEntry");
 const service = require("../services/consultationService");
 const { validateConsultationDraft } = require("../validators/consultationValidator");
@@ -28,6 +29,7 @@ const originalMethods = {
   consultationExists: Consultation.exists,
   consultationFindOne: Consultation.findOne,
   consultationFindOneAndUpdate: Consultation.findOneAndUpdate,
+  prescriptionExists: Prescription.exists,
   startSession: require("mongoose").startSession,
 };
 
@@ -62,6 +64,7 @@ const matches = (record, filter) =>
 let appointment;
 let queueEntry;
 let consultations;
+let prescriptions;
 
 beforeEach(() => {
   appointment = {
@@ -85,6 +88,7 @@ beforeEach(() => {
     save: async function save() {},
   };
   consultations = [];
+  prescriptions = [];
 
   Doctor.findOne = (filter) =>
     query(() => {
@@ -125,6 +129,11 @@ beforeEach(() => {
       Object.assign(consultation, update.$set);
       return consultation;
     });
+  Prescription.exists = (filter) =>
+    query(() => {
+      const prescription = prescriptions.find((item) => matches(item, filter));
+      return prescription ? { _id: prescription._id } : null;
+    });
   require("mongoose").startSession = async () => ({
     withTransaction: async (callback) => callback(),
     endSession: async () => {},
@@ -139,6 +148,7 @@ afterEach(() => {
   Consultation.exists = originalMethods.consultationExists;
   Consultation.findOne = originalMethods.consultationFindOne;
   Consultation.findOneAndUpdate = originalMethods.consultationFindOneAndUpdate;
+  Prescription.exists = originalMethods.prescriptionExists;
   require("mongoose").startSession = originalMethods.startSession;
 });
 
@@ -165,6 +175,8 @@ test("starts a called walk-in, then completes appointment and queue atomically",
   assert.equal(queueEntry.queueStatus, "in_consultation");
   assert.equal(queueEntry.active, false);
 
+  await service.markNoPrescriptionNeeded(ids.consultation, doctorUser);
+
   const completed = await service.completeConsultation(
     ids.consultation,
     doctorUser,
@@ -176,6 +188,76 @@ test("starts a called walk-in, then completes appointment and queue atomically",
   assert.equal(appointment.statusHistory.at(-1).status, "completed");
   assert.equal(queueEntry.queueStatus, "completed");
   assert.equal(queueEntry.active, false);
+});
+
+test("copies recorded triage vitals into the consultation snapshot", async () => {
+  appointment.triage = {
+    vitals: { systolic: 120, diastolic: 80, temperature: 36.7 },
+    recordedBy: ids.userB,
+    recordedAt: new Date("2026-10-15T01:00:00Z"),
+  };
+
+  const started = await service.startConsultation(ids.queue, doctorUser);
+  assert.equal(started.vitals.systolic, 120);
+  assert.equal(started.vitals.diastolic, 80);
+  assert.equal(started.triageRecordedBy, ids.userB);
+  assert.equal(started.triageRecordedAt, appointment.triage.recordedAt);
+});
+
+test("blocks completion while the prescription decision is pending", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  await assert.rejects(
+    service.completeConsultation(ids.consultation, doctorUser, completeDraft),
+    {
+      statusCode: 400,
+      message:
+        "Complete the prescription decision before completing the consultation.",
+    }
+  );
+  assert.equal(appointment.status, "in_consultation");
+  assert.equal(queueEntry.queueStatus, "in_consultation");
+});
+
+test("a draft prescription alone does not allow completion", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  prescriptions.push({
+    _id: "800000000000000000000001",
+    consultationId: ids.consultation,
+    doctorId: ids.doctorA,
+    status: "draft",
+  });
+  await assert.rejects(
+    service.completeConsultation(ids.consultation, doctorUser, completeDraft),
+    { statusCode: 400 }
+  );
+});
+
+test("an issued prescription allows completion", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  prescriptions.push({
+    _id: "800000000000000000000001",
+    consultationId: ids.consultation,
+    doctorId: ids.doctorA,
+    status: "issued",
+  });
+  const completed = await service.completeConsultation(
+    ids.consultation,
+    doctorUser,
+    completeDraft
+  );
+  assert.equal(completed.status, "completed");
+});
+
+test("an explicit no-prescription-needed decision allows completion", async () => {
+  await service.startConsultation(ids.queue, doctorUser);
+  await service.markNoPrescriptionNeeded(ids.consultation, doctorUser);
+  const completed = await service.completeConsultation(
+    ids.consultation,
+    doctorUser,
+    completeDraft
+  );
+  assert.equal(completed.status, "completed");
+  assert.equal(completed.prescriptionDecision, "none_required");
 });
 
 test("starts a called scheduled appointment using the same workflow", async () => {

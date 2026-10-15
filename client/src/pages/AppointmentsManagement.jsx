@@ -38,6 +38,7 @@ import { useEffect, useState } from 'react'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
+import TriageVitalsDialog from '../components/TriageVitalsDialog'
 import useAuth from '../hooks/useAuth'
 import {
   confirmAppointment,
@@ -112,6 +113,7 @@ function AppointmentsManagement() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [notice, setNotice] = useState(null)
   const [queueActionId, setQueueActionId] = useState('')
+  const [triageAppointment, setTriageAppointment] = useState(null)
 
   // Confirm appointment modal
   const [confirmDialog, setConfirmDialog] = useState({
@@ -554,6 +556,9 @@ function AppointmentsManagement() {
                     }).format(new Date(row.startAt)) === todayStr
                   const canAddToQueue =
                     isScheduled && row.status === 'checked_in'
+                  const canRecordVitals = ['checked_in', 'waiting'].includes(
+                    row.status,
+                  )
 
                   return (
                     <TableRow key={row._id} hover>
@@ -604,6 +609,13 @@ function AppointmentsManagement() {
                       </TableCell>
                       <TableCell>
                         <StatusChip status={row.status} />
+                        <Typography
+                          variant="caption"
+                          color={row.triage?.recordedAt ? 'success.main' : 'text.secondary'}
+                          sx={{ display: 'block', mt: 0.75 }}
+                        >
+                          Vitals: {row.triage?.recordedAt ? '✓ Recorded' : 'Not recorded'}
+                        </Typography>
                       </TableCell>
                       <TableCell align="right">
                         <Stack
@@ -681,6 +693,17 @@ function AppointmentsManagement() {
                                 </IconButton>
                               </span>
                             </Tooltip>
+                          )}
+                          {canRecordVitals && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => setTriageAppointment(row)}
+                            >
+                              {row.triage?.recordedAt
+                                ? 'View / Update Vitals'
+                                : 'Record Vitals'}
+                            </Button>
                           )}
                           <Tooltip title="View Details & Audit Log">
                             <IconButton
@@ -1185,6 +1208,18 @@ function AppointmentsManagement() {
       </Dialog>
 
       {/* Feedback Snackbar */}
+      <TriageVitalsDialog
+        key={`${triageAppointment?._id || 'closed'}-${triageAppointment?.triage?.recordedAt || ''}`}
+        appointment={triageAppointment}
+        open={Boolean(triageAppointment)}
+        onClose={() => setTriageAppointment(null)}
+        onSaved={(_, message) => {
+          setTriageAppointment(null)
+          setNotice({ severity: 'success', message })
+          setRefreshKey((current) => current + 1)
+        }}
+      />
+
       <Snackbar
         open={Boolean(notice)}
         autoHideDuration={5000}

@@ -30,7 +30,9 @@ const getOwnedConsultation = async (consultationId, doctorId) => {
   const consultation = await Consultation.findOne({
     _id: consultationId,
     doctorId,
-  }).select("_id appointmentId patientId doctorId serviceId status");
+  }).select(
+    "_id appointmentId patientId doctorId serviceId status prescriptionDecision"
+  );
   if (!consultation) throw new AppError("Consultation not found", 404);
   if (!["in_progress", "completed"].includes(consultation.status)) {
     throw new AppError("Prescription is not available for this consultation.", 409);
@@ -41,6 +43,12 @@ const getOwnedConsultation = async (consultationId, doctorId) => {
 const createPrescription = async (consultationId, user) => {
   const doctor = await getDoctorForUser(user._id);
   const consultation = await getOwnedConsultation(consultationId, doctor._id);
+  if (consultation.prescriptionDecision === "none_required") {
+    throw new AppError(
+      "This consultation is marked as not requiring a prescription.",
+      409
+    );
+  }
   if (await Prescription.exists({ consultationId: consultation._id })) {
     throw new AppError(
       "A prescription already exists for this consultation.",
@@ -168,7 +176,16 @@ const issuePrescription = async (prescriptionId, user, data) => {
   if (ownedPrescription.status !== "draft") {
     throw new AppError("Only draft prescriptions can be issued.", 409);
   }
-  await getOwnedConsultation(ownedPrescription.consultationId, doctor._id);
+  const consultation = await getOwnedConsultation(
+    ownedPrescription.consultationId,
+    doctor._id
+  );
+  if (consultation.prescriptionDecision === "none_required") {
+    throw new AppError(
+      "This consultation is marked as not requiring a prescription.",
+      409
+    );
+  }
   const prescription = await Prescription.findOneAndUpdate(
     {
       _id: prescriptionId,

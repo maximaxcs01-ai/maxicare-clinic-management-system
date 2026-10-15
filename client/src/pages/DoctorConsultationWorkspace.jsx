@@ -18,6 +18,7 @@ import StatusChip from '../components/common/StatusChip'
 import {
   completeConsultation,
   getConsultation,
+  markNoPrescriptionNeeded,
   saveConsultationDraft,
 } from '../services/appointmentApi'
 import {
@@ -89,15 +90,23 @@ function DoctorConsultationWorkspace() {
   const [notice, setNotice] = useState(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [prescriptionLoading, setPrescriptionLoading] = useState(false)
+  const [prescription, setPrescription] = useState(null)
 
   useEffect(() => {
     let active = true
     getConsultation(id)
-      .then((response) => {
+      .then(async (response) => {
         if (!active) return
         setConsultation(response.data.data)
         setDraft(toDraft(response.data.data))
         setError('')
+        try {
+          const prescriptionResponse = await getPrescriptionForConsultation(id)
+          if (active) setPrescription(prescriptionResponse.data.data)
+        } catch (requestError) {
+          if (requestError.response?.status !== 404) throw requestError
+          if (active) setPrescription(null)
+        }
       })
       .catch((requestError) => {
         if (active) {
@@ -192,6 +201,23 @@ function DoctorConsultationWorkspace() {
     }
   }
 
+  const handleNoPrescriptionNeeded = async () => {
+    try {
+      setPrescriptionLoading(true)
+      setError('')
+      const response = await markNoPrescriptionNeeded(id)
+      setConsultation(response.data.data)
+      setNotice({ severity: 'success', message: response.data.message })
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          'Unable to save the prescription decision.',
+      )
+    } finally {
+      setPrescriptionLoading(false)
+    }
+  }
+
   const readOnly = consultation?.status === 'completed'
   const consultationMatchesRoute =
     consultation && String(consultation._id) === id
@@ -220,6 +246,17 @@ function DoctorConsultationWorkspace() {
   }
 
   const patient = consultation.patientId
+  const prescriptionStatus =
+    consultation.prescriptionDecision === 'none_required'
+      ? 'none_required'
+      : prescription?.status === 'issued'
+        ? 'issued'
+        : 'pending'
+  const prescriptionResolved = prescriptionStatus !== 'pending'
+  const triageRecorder = consultation.triageRecordedBy
+  const triageRecorderName = triageRecorder
+    ? [triageRecorder.firstName, triageRecorder.lastName].filter(Boolean).join(' ')
+    : ''
 
   return (
     <Box component="section" className="doctor-page doctor-consultation-workspace" sx={{ width: '100%', minWidth: 0 }}>
@@ -314,9 +351,19 @@ function DoctorConsultationWorkspace() {
         </Paper>
 
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Vitals
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Vitals / Triage
           </Typography>
+          {consultation.triageRecordedAt ? (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Triage completed by {triageRecorderName || 'clinic staff'} on{' '}
+              {formatDateTime(consultation.triageRecordedAt)}
+            </Typography>
+          ) : (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              No pre-consultation triage was recorded. You may enter vitals below.
+            </Alert>
+          )}
           <Divider sx={{ mb: 2 }} />
           <Box
             sx={{
@@ -329,35 +376,54 @@ function DoctorConsultationWorkspace() {
               gap: 2,
             }}
           >
-            {VITAL_FIELDS.map(([field, label, unit]) => (
-              <TextField
-                key={field}
-                type="number"
-                label={label}
-                value={draft.vitals[field]}
-                disabled={readOnly || saving}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    vitals: {
-                      ...current.vitals,
-                      [field]: event.target.value,
-                    },
-                  }))
-                }
-                inputProps={{
-                  min: 0,
-                  step: field === 'temperature' || field === 'weight' || field === 'height' ? '0.1' : '1',
-                }}
-                InputProps={{
-                  endAdornment: (
-                    <Typography variant="caption" color="text.secondary">
-                      {unit}
-                    </Typography>
-                  ),
-                }}
-              />
-            ))}
+            {VITAL_FIELDS.map(([field, label, unit]) =>
+              consultation.triageRecordedAt ? (
+                <Box
+                  key={field}
+                  sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 2 }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    {label}
+                  </Typography>
+                  <Typography fontWeight={700}>
+                    {draft.vitals[field] === ''
+                      ? '—'
+                      : `${draft.vitals[field]} ${unit}`}
+                  </Typography>
+                </Box>
+              ) : (
+                <TextField
+                  key={field}
+                  type="number"
+                  label={label}
+                  value={draft.vitals[field]}
+                  disabled={readOnly || saving}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      vitals: {
+                        ...current.vitals,
+                        [field]: event.target.value,
+                      },
+                    }))
+                  }
+                  inputProps={{
+                    min: 0,
+                    step:
+                      field === 'temperature' || field === 'weight' || field === 'height'
+                        ? '0.1'
+                        : '1',
+                  }}
+                  InputProps={{
+                    endAdornment: (
+                      <Typography variant="caption" color="text.secondary">
+                        {unit}
+                      </Typography>
+                    ),
+                  }}
+                />
+              ),
+            )}
           </Box>
         </Paper>
 
@@ -455,6 +521,51 @@ function DoctorConsultationWorkspace() {
             fullWidth
           />
         </Paper>
+
+        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>Prescription</Typography>
+          <Divider sx={{ mb: 2 }} />
+          <Typography fontWeight={700}>
+            {prescriptionStatus === 'issued'
+              ? 'Prescription Issued ✓'
+              : prescriptionStatus === 'none_required'
+                ? 'No Prescription Needed ✓'
+                : 'Not decided'}
+          </Typography>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            sx={{ mt: 2 }}
+          >
+            {prescriptionStatus === 'pending' && !readOnly && (
+              <>
+                <Button
+                  variant="outlined"
+                  disabled={prescriptionLoading}
+                  onClick={handleOpenPrescription}
+                >
+                  {prescription ? 'Open Prescription' : 'Create Prescription'}
+                </Button>
+                <Button
+                  disabled={prescriptionLoading}
+                  onClick={handleNoPrescriptionNeeded}
+                >
+                  No Prescription Needed
+                </Button>
+              </>
+            )}
+            {prescriptionStatus === 'issued' && (
+              <Button
+                variant="outlined"
+                onClick={() =>
+                  navigate(`/doctor/prescriptions/${prescription._id}`)
+                }
+              >
+                View Prescription
+              </Button>
+            )}
+          </Stack>
+        </Paper>
       </Stack>
 
       {!readOnly && (
@@ -469,11 +580,20 @@ function DoctorConsultationWorkspace() {
           </Button>
           <Button
             variant="contained"
-            disabled={saving}
+            disabled={saving || !prescriptionResolved}
             onClick={() => setConfirmOpen(true)}
           >
             Complete Consultation
           </Button>
+          {!prescriptionResolved && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ alignSelf: 'center' }}
+            >
+              Resolve the prescription step before completing this consultation.
+            </Typography>
+          )}
         </Stack>
       )}
 

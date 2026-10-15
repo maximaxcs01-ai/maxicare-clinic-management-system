@@ -21,6 +21,8 @@ export const checkInAppointment = (id) =>
   api.patch(`/appointments/${id}/check-in`)
 export const addAppointmentToQueue = (id) =>
   api.post(`/appointments/${id}/queue`)
+export const saveAppointmentTriage = (id, data) =>
+  api.patch(`/appointments/${id}/triage`, data)
 
 export const getWalkInDoctor = (serviceId) =>
   api.get('/walk-ins/next-doctor', { params: { serviceId } })
@@ -41,3 +43,7 @@ export const saveConsultationDraft = (id, data) =>
   api.patch(`/consultations/${id}`, data)
 export const completeConsultation = (id, data) =>
   api.post(`/consultations/${id}/complete`, data)
+export const markNoPrescriptionNeeded = (id) =>
+  api.patch(`/consultations/${id}/prescription-decision`, {
+    decision: 'none_required',
+  })

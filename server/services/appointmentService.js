@@ -26,6 +26,7 @@ const populateAppointment = (query) =>
     .populate("rejectedBy", "firstName lastName role")
     .populate("cancelledBy", "firstName lastName role")
     .populate("lastRescheduledBy", "firstName lastName role")
+    .populate("triage.recordedBy", "firstName lastName role")
     .populate("statusHistory.changedBy", "firstName lastName role");
 
 const createPatientAppointment = async (user, input) => {
@@ -172,6 +173,7 @@ const listAllAppointments = async (query) => {
       .populate("rejectedBy", "firstName lastName role")
       .populate("cancelledBy", "firstName lastName role")
       .populate("lastRescheduledBy", "firstName lastName role")
+      .populate("triage.recordedBy", "firstName lastName role")
       .sort({ startAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -571,6 +573,39 @@ const rescheduleAppointment = async (
   return populateAppointment(Appointment.findById(appointment._id));
 };
 
+const recordTriageVitals = async (appointmentId, user, vitals) => {
+  if (!["admin", "receptionist"].includes(user.role)) {
+    throw new AppError("Not authorized to record triage vitals.", 403);
+  }
+  if (!mongoose.isValidObjectId(appointmentId)) {
+    throw new AppError("Invalid appointment", 400);
+  }
+
+  const appointment = await Appointment.findById(appointmentId);
+  if (!appointment) throw new AppError("Appointment not found", 404);
+  if (!["checked_in", "waiting"].includes(appointment.status)) {
+    throw new AppError(
+      "Vitals can only be recorded after check-in and before consultation starts.",
+      409
+    );
+  }
+
+  const updated = Boolean(appointment.triage?.recordedAt);
+  appointment.triage = {
+    vitals,
+    recordedBy: user._id,
+    recordedAt: new Date(),
+  };
+  await appointment.save();
+
+  return {
+    appointment: await populateAppointment(
+      Appointment.findById(appointment._id)
+    ),
+    updated,
+  };
+};
+
 const getPatientForUser = async (userId) => {
   const patient = await Patient.findOne({ userId }).select("_id");
   if (!patient) throw new AppError("Patient profile not found", 404);
@@ -588,5 +623,6 @@ module.exports = {
   rejectAppointment,
   cancelAppointment,
   rescheduleAppointment,
+  recordTriageVitals,
   getPatientForUser,
 };

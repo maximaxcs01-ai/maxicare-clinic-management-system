@@ -105,6 +105,7 @@ test("Admin and Receptionist can use staff appointment operations", () => {
     ["/:id/reject", "patch"],
     ["/:id/check-in", "patch"],
     ["/:id/queue", "post"],
+    ["/:id/triage", "patch"],
     ["/:id/reschedule", "patch"],
   ]) {
     assertAllowedForOperations(
@@ -123,4 +124,12 @@ test("Consultation and prescription routes remain Doctor-only", () => {
       assert.equal(invoke(doctorGuard, role).passed, false);
     }
   }
+});
+
+test("Only Admin and Receptionist can record triage vitals", () => {
+  assertAllowedForOperations(
+    getRouteGuard(appointmentRoutes, "/:id/triage", "patch"),
+    ["admin", "receptionist"],
+    ["doctor", "patient"],
+  );
 });
