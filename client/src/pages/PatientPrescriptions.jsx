@@ -72,6 +72,11 @@ function PatientPrescriptions() {
           {prescriptions.map((prescription) => {
             const doctor = prescription.doctorId
             const service = prescription.serviceId || prescription.appointmentId?.serviceId
+            const consultation =
+              prescription.consultationId &&
+              typeof prescription.consultationId === 'object'
+                ? prescription.consultationId
+                : null
             return (
               <Paper key={prescription._id} className="prescription-card">
                 <Stack
@@ -95,6 +100,31 @@ function PatientPrescriptions() {
                   </Typography>
                 </Stack>
                 <Divider />
+                <Box sx={{ py: 1.5 }}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                    Consultation Summary
+                  </Typography>
+                  <Stack spacing={1}>
+                    {[
+                      ['Diagnosis', consultation?.diagnosis],
+                      ['Treatment plan', consultation?.treatmentPlan],
+                      ['Patient instructions', consultation?.instructions],
+                    ].map(([label, value]) => (
+                      <Box key={label}>
+                        <Typography variant="body2" fontWeight={700}>
+                          {label}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+                        >
+                          {value?.trim() || 'Not yet provided'}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
                 <Stack spacing={1.25}>
                   {(prescription.medications || []).map((medication, index) => (
                     <Box key={medication._id || `${prescription._id}-${index}`} className="medication-row">
@@ -113,12 +143,15 @@ function PatientPrescriptions() {
                     </Box>
                   ))}
                 </Stack>
-                {prescription.generalInstructions && (
+                {!consultation?.instructions &&
+                  prescription.generalInstructions && (
                   <Box className="prescription-instructions">
-                    <Typography variant="caption" color="text.secondary">General instructions</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Legacy prescription instructions
+                    </Typography>
                     <Typography variant="body2">{prescription.generalInstructions}</Typography>
                   </Box>
-                )}
+                  )}
               </Paper>
             )
           })}

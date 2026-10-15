@@ -74,8 +74,12 @@ function validateField(name, value, formData) {
 }
 
 function FieldFeedback({ message, valid }) {
-  if (message) return <p className="field-error">{message}</p>
-  return valid ? <p className="field-valid">Looks good.</p> : null
+  const feedback = message ? 'field-error' : valid ? 'field-valid' : ''
+  return (
+    <p className={`field-feedback ${feedback}`} aria-live="polite">
+      {message || (valid ? 'Looks good.' : '\u00a0')}
+    </p>
+  )
 }
 
 function Register() {
@@ -180,11 +184,15 @@ function Register() {
   ]
   const passwordValid =
     formData.password.length >= 8 && formData.password.length <= 16
-  const passwordFeedback = touched.password || formData.password
+  const passwordFeedback = touched.password
     ? passwordValid
       ? 'valid'
-      : 'invalid'
-    : 'neutral'
+      : formData.password
+        ? 'invalid'
+        : 'neutral'
+    : passwordValid
+      ? 'valid'
+      : 'neutral'
 
   return (
     <AuthPage wide className="auth-register-panel">

@@ -90,6 +90,11 @@ beforeEach(() => {
     doctorId: ids.doctor,
     serviceId: ids.service,
     status: "completed",
+    diagnosis: "Confirmed diagnosis",
+    treatmentPlan: "Treatment plan from consultation",
+    instructions: "Patient instructions from consultation",
+    chiefComplaint: "Relevant chief complaint",
+    symptoms: "Relevant symptoms",
   };
   prescriptions = [];
   populateCalls = [];
@@ -221,6 +226,55 @@ test("allows repeated draft saves for the assigned doctor", async () => {
   assert.equal(second.generalInstructions, "Updated note");
 });
 
+test("saving a draft without legacy general instructions preserves the stored value", async () => {
+  await service.createPrescription(ids.consultation, doctorUser);
+  prescriptions[0].generalInstructions = "Legacy prescription text";
+
+  const saved = await service.saveDraft(ids.prescription, doctorUser, {
+    medications: [validMedication],
+  });
+
+  assert.equal(saved.generalInstructions, "Legacy prescription text");
+  assert.equal(saved.medications[0].medicationName, validMedication.medicationName);
+});
+
+test("issuing without legacy general instructions preserves the stored value", async () => {
+  await service.createPrescription(ids.consultation, doctorUser);
+  prescriptions[0].generalInstructions = "Legacy prescription text";
+
+  const issued = await service.issuePrescription(ids.prescription, doctorUser, {
+    medications: [validMedication],
+  });
+
+  assert.equal(issued.status, "issued");
+  assert.equal(issued.generalInstructions, "Legacy prescription text");
+});
+
+test("prescription context projection includes consultation fields and excludes private notes", async () => {
+  await service.createPrescription(ids.consultation, doctorUser);
+  await service.getPrescription(ids.prescription, doctorUser);
+  const consultationPopulate = populateCalls.find(
+    ([kind, path]) =>
+      kind === "populate" &&
+      (path === "consultationId" || path?.path === "consultationId")
+  );
+  assert.ok(consultationPopulate);
+  const projection =
+    typeof consultationPopulate[1] === "object"
+      ? consultationPopulate[1].select
+      : consultationPopulate[2];
+  for (const field of [
+    "diagnosis",
+    "treatmentPlan",
+    "instructions",
+    "chiefComplaint",
+    "symptoms",
+  ]) {
+    assert.ok(projection.includes(field), `${field} should be available as context`);
+  }
+  assert.equal(projection.includes("privateNotes"), false);
+});
+
 test("requires at least one medication before issuing", async () => {
   await service.createPrescription(ids.consultation, doctorUser);
   await assert.rejects(
@@ -279,6 +333,26 @@ test("prescription response projection does not select consultation privateNotes
       ? consultationPopulate[1].select
       : consultationPopulate[2];
   assert.equal(projection.includes("privateNotes"), false);
+});
+
+test("prescription validators allow legacy general instructions to be omitted", () => {
+  let validated;
+  let statusCode;
+  const req = { body: { medications: [validMedication] } };
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json() {},
+  };
+
+  validatePrescriptionIssue(req, res, () => {
+    validated = req.validatedPrescription;
+  });
+
+  assert.equal(statusCode, undefined);
+  assert.deepEqual(validated, { medications: [validMedication] });
 });
 
 test("prescription API role guard blocks patients, receptionists, and admins", () => {

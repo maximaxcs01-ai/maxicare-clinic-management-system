@@ -93,7 +93,7 @@ function AuthenticatedLayout() {
   const handleLogout = () => {
     setAccountAnchor(null)
     logout()
-    navigate('/login')
+    navigate('/', { replace: true })
   }
 
   const goToAccountPage = (path) => {

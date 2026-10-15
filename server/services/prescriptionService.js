@@ -14,7 +14,8 @@ const prescriptionPopulation = (query) =>
     .populate("appointmentId", "bookingType startAt")
     .populate({
       path: "consultationId",
-      select: "diagnosis treatmentPlan instructions status startedAt",
+      select:
+        "diagnosis treatmentPlan instructions chiefComplaint symptoms status startedAt",
     });
 
 const getDoctorForUser = async (userId) => {
@@ -129,6 +130,13 @@ const saveDraft = async (prescriptionId, user, data) => {
     throw new AppError("Invalid prescription", 400);
   }
   const doctor = await getDoctorForUser(user._id);
+  const updates = {
+    medications: data.medications,
+    updatedBy: user._id,
+  };
+  if (Object.hasOwn(data, "generalInstructions")) {
+    updates.generalInstructions = data.generalInstructions;
+  }
   const prescription = await Prescription.findOneAndUpdate(
     {
       _id: prescriptionId,
@@ -136,11 +144,7 @@ const saveDraft = async (prescriptionId, user, data) => {
       status: "draft",
     },
     {
-      $set: {
-        medications: data.medications,
-        generalInstructions: data.generalInstructions,
-        updatedBy: user._id,
-      },
+      $set: updates,
     },
     { new: true, runValidators: true }
   );
@@ -186,6 +190,15 @@ const issuePrescription = async (prescriptionId, user, data) => {
       409
     );
   }
+  const updates = {
+    medications: data.medications,
+    status: "issued",
+    issuedAt: new Date(),
+    updatedBy: user._id,
+  };
+  if (Object.hasOwn(data, "generalInstructions")) {
+    updates.generalInstructions = data.generalInstructions;
+  }
   const prescription = await Prescription.findOneAndUpdate(
     {
       _id: prescriptionId,
@@ -193,13 +206,7 @@ const issuePrescription = async (prescriptionId, user, data) => {
       status: "draft",
     },
     {
-      $set: {
-        medications: data.medications,
-        generalInstructions: data.generalInstructions,
-        status: "issued",
-        issuedAt: new Date(),
-        updatedBy: user._id,
-      },
+      $set: updates,
     },
     { new: true, runValidators: true }
   );

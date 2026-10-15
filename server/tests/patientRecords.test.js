@@ -76,11 +76,13 @@ const doctorUser = { _id: ids.user, role: "doctor" };
 let consultationQueries;
 let prescriptionQueries;
 let projectedFields;
+let prescriptionPopulations;
 
 beforeEach(() => {
   consultationQueries = [];
   prescriptionQueries = [];
   projectedFields = [];
+  prescriptionPopulations = [];
   Patient.findOne = () => makeQuery(() => patient, projectedFields);
   Patient.findById = () => makeQuery(() => patient, projectedFields);
   Patient.findByIdAndDelete = async () => {
@@ -148,8 +150,8 @@ beforeEach(() => {
     }, projectedFields);
     return query;
   };
-  Prescription.find = (filter) =>
-    makeQuery(() => {
+  Prescription.find = (filter) => {
+    const query = makeQuery(() => {
       prescriptionQueries.push(filter);
       return filter.status === "issued"
         ? [
@@ -161,16 +163,21 @@ beforeEach(() => {
             },
           ]
         : [];
-    }, projectedFields);
+    }, projectedFields, prescriptionPopulations);
+    return query;
+  };
   Prescription.findOne = (filter) =>
-    makeQuery(() =>
-      filter.patientId === ids.patient && filter.status === "issued"
-        ? {
-            _id: ids.prescription,
-            consultationId: ids.consultation,
-            status: "issued",
-          }
-        : null
+    makeQuery(
+      () =>
+        filter.patientId === ids.patient && filter.status === "issued"
+          ? {
+              _id: ids.prescription,
+              consultationId: ids.consultation,
+              status: "issued",
+            }
+          : null,
+      projectedFields,
+      prescriptionPopulations
     );
 });
 
@@ -200,6 +207,14 @@ test("patient history includes completed consultations and issued prescriptions 
     false
   );
   assert.equal(projectedFields.some((fields) => fields?.includes("privateNotes")), false);
+  const consultationPopulate = prescriptionPopulations.find(
+    ([path]) => path?.path === "consultationId"
+  );
+  assert.ok(consultationPopulate);
+  assert.ok(consultationPopulate[0].select.includes("diagnosis"));
+  assert.ok(consultationPopulate[0].select.includes("treatmentPlan"));
+  assert.ok(consultationPopulate[0].select.includes("instructions"));
+  assert.equal(consultationPopulate[0].select.includes("privateNotes"), false);
 });
 
 test("patient consultation detail is resolved through the authenticated Patient", async () => {

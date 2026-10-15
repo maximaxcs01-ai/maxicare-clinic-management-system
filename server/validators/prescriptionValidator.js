@@ -32,10 +32,16 @@ const validateConsultationId = (req, res, next) => {
 };
 
 const normalizePrescription = (body = {}) => {
-  if (typeof body.generalInstructions !== "string") {
+  if (
+    Object.hasOwn(body, "generalInstructions") &&
+    typeof body.generalInstructions !== "string"
+  ) {
     return { error: "General instructions must be text" };
   }
-  if (body.generalInstructions.length > 5000) {
+  if (
+    typeof body.generalInstructions === "string" &&
+    body.generalInstructions.length > 5000
+  ) {
     return { error: "General instructions cannot exceed 5000 characters" };
   }
   if (!Array.isArray(body.medications) || body.medications.length > 50) {
@@ -75,7 +81,9 @@ const normalizePrescription = (body = {}) => {
 
   return {
     data: {
-      generalInstructions: body.generalInstructions.trim(),
+      ...(typeof body.generalInstructions === "string"
+        ? { generalInstructions: body.generalInstructions.trim() }
+        : {}),
       medications,
     },
   };

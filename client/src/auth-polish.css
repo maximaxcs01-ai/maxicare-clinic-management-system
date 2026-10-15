@@ -10,6 +10,16 @@
   min-height: 100vh;
   color: #15334f;
   background: #fff;
+  scroll-behavior: smooth;
+}
+
+.landing-page :is(section, footer) {
+  scroll-margin-top: 20px;
+}
+
+.landing-page :is(a, button):focus-visible {
+  outline: 3px solid #57a1d8;
+  outline-offset: 3px;
 }
 
 .brand-mark {
@@ -285,6 +295,23 @@
   color: #1769aa;
 }
 
+.landing-card-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 14px;
+  color: #1769aa;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.landing-card-link:hover {
+  color: #11568f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .landing-features {
   padding: 32px 0;
   border-bottom: 1px solid #e8edf1;
@@ -369,6 +396,182 @@
   margin: 0;
   color: #61788a;
   line-height: 1.7;
+}
+
+.landing-catalog-section {
+  padding: 78px 24px 84px;
+  background: #f6f9fb;
+}
+
+.landing-services-section {
+  background: #fff;
+}
+
+.landing-section-inner {
+  width: min(100%, 1160px);
+  margin: 0 auto;
+}
+
+.landing-section-heading {
+  max-width: 680px;
+  margin: 0 auto 32px;
+  text-align: center;
+}
+
+.landing-section-eyebrow {
+  color: #247b70;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.landing-section-heading h2,
+.landing-contact h2 {
+  margin: 10px 0;
+  color: #102f4d;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  letter-spacing: -0.045em;
+}
+
+.landing-section-heading p,
+.landing-contact p {
+  margin: 0;
+  color: #61788a;
+  line-height: 1.7;
+}
+
+.landing-loading,
+.landing-empty-state {
+  display: flex;
+  justify-content: center;
+  padding: 28px 0;
+  color: #61788a;
+  text-align: center;
+}
+
+.landing-doctor-grid,
+.landing-service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.landing-doctor-card,
+.landing-service-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 24px;
+  border: 1px solid #e0e8ee;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(21, 48, 70, 0.05);
+}
+
+.landing-doctor-card h3,
+.landing-service-card h3 {
+  margin: 16px 0 6px;
+  color: #173953;
+  font-size: 1.04rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.landing-doctor-specialization {
+  margin: 0;
+  color: #536e82;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.landing-doctor-card ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 15px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-doctor-card li {
+  padding: 5px 9px;
+  border-radius: 20px;
+  color: #34576f;
+  background: #edf5fa;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.landing-card-secondary {
+  margin: 14px 0 0;
+  color: #738695;
+  font-size: 0.78rem;
+}
+
+.landing-doctor-card .landing-card-link,
+.landing-service-card .landing-card-link {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.landing-service-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #1769aa;
+  background: #edf5fb;
+}
+
+.landing-service-icon svg {
+  font-size: 24px;
+}
+
+.landing-service-card h3 {
+  margin-top: 18px;
+}
+
+.landing-service-card > p {
+  min-height: 48px;
+  margin: 0;
+  color: #61788a;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.landing-service-meta {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e8edf1;
+  color: #526b7e;
+  font-size: 0.78rem;
+}
+
+.landing-service-meta strong {
+  color: #173953;
+  white-space: nowrap;
+}
+
+.landing-contact {
+  padding: 76px 24px;
+  background: #eef5f9;
+}
+
+.landing-contact-content {
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.landing-contact .landing-button {
+  margin-top: 22px;
 }
 
 .landing-footer {
@@ -710,6 +913,12 @@
   gap: 16px 18px;
 }
 
+.auth-field-firstName,
+.auth-field-middleName,
+.auth-field-lastName {
+  grid-column: span 2;
+}
+
 .auth-field-email {
   grid-column: span 3;
 }
@@ -725,6 +934,35 @@
 
 .register-submit {
   grid-column: 1 / -1;
+}
+
+.register-form-grid .auth-field {
+  min-width: 0;
+}
+
+.register-form-grid .auth-field > label {
+  margin: 0;
+}
+
+.register-form-grid .auth-field > input,
+.register-form-grid .password-input-wrap > input {
+  min-height: 48px;
+  border-radius: 9px;
+}
+
+.register-form-grid .password-input-wrap > input {
+  padding-right: 48px;
+}
+
+.register-form-grid .password-visibility-button {
+  right: 7px;
+}
+
+.field-feedback {
+  min-height: 16px;
+  margin: -2px 0 0;
+  font-size: 0.69rem;
+  line-height: 1.4;
 }
 
 .password-requirements {
@@ -772,6 +1010,12 @@
 
 .auth-verified-actions .auth-link {
   margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page {
+    scroll-behavior: auto;
+  }
 }
 
 .field-error,
@@ -956,6 +1200,11 @@
     padding-top: 28px;
   }
 
+  .landing-doctor-grid,
+  .landing-service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .landing-features-inner {
     grid-template-columns: 1fr;
   }
@@ -991,6 +1240,11 @@
   .landing-hero-media {
     height: 450px;
   }
+
+  .landing-doctor-grid,
+  .landing-service-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 720px) {
@@ -1009,6 +1263,12 @@
 
   .register-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .auth-field-firstName,
+  .auth-field-middleName,
+  .auth-field-lastName {
+    grid-column: span 1;
   }
 
   .auth-field-email,
@@ -1069,6 +1329,23 @@
     padding: 67px 20px 72px;
   }
 
+  .landing-catalog-section {
+    padding: 60px 16px;
+  }
+
+  .landing-doctor-grid,
+  .landing-service-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-service-card > p {
+    min-height: 0;
+  }
+
+  .landing-contact {
+    padding: 60px 20px;
+  }
+
   .landing-footer-inner {
     align-items: flex-start;
     flex-direction: column;
@@ -1080,6 +1357,12 @@
   .register-form-grid {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+
+  .auth-field-firstName,
+  .auth-field-middleName,
+  .auth-field-lastName {
+    grid-column: 1;
   }
 
   .auth-field-email,

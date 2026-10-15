@@ -218,14 +218,17 @@ function PatientMedicalRecord() {
                   )}
                 </Paper>
               ))}
-              {prescription.generalInstructions && (
-                <Box>
-                  <Typography fontWeight={700}>General instructions</Typography>
-                  <Typography sx={{ whiteSpace: 'pre-wrap' }}>
-                    {prescription.generalInstructions}
-                  </Typography>
-                </Box>
-              )}
+              {!consultation.instructions &&
+                prescription.generalInstructions && (
+                  <Box>
+                    <Typography fontWeight={700}>
+                      Legacy prescription instructions
+                    </Typography>
+                    <Typography sx={{ whiteSpace: 'pre-wrap' }}>
+                      {prescription.generalInstructions}
+                    </Typography>
+                  </Box>
+                )}
             </Stack>
           </Paper>
         )}

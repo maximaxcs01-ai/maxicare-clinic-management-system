@@ -26,6 +26,7 @@ const patientRecordsRoutes = require("./routes/patientRecordsRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const auditRoutes = require("./routes/auditRoutes");
+const publicRoutes = require("./routes/publicRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -85,6 +86,7 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/public", publicRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/doctors", scheduleRoutes);

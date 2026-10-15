@@ -1,4 +1,5 @@
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import {
   Alert,
@@ -44,7 +45,6 @@ const medicationFields = [
 ]
 
 const toDraft = (prescription) => ({
-  generalInstructions: prescription.generalInstructions || '',
   medications: prescription.medications?.length
     ? prescription.medications.map((medication) => ({
         medicationName: medication.medicationName || '',
@@ -68,10 +68,7 @@ function DoctorPrescriptionWorkspace() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [prescription, setPrescription] = useState(null)
-  const [draft, setDraft] = useState({
-    generalInstructions: '',
-    medications: [newMedication()],
-  })
+  const [draft, setDraft] = useState({ medications: [newMedication()] })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -126,7 +123,6 @@ function DoctorPrescriptionWorkspace() {
         Object.values(medication).some((value) => value.trim())
       )
       const response = await request(id, {
-        ...draft,
         medications,
       })
       setPrescription(response.data.data)
@@ -247,36 +243,71 @@ function DoctorPrescriptionWorkspace() {
         </Paper>
 
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Diagnosis / Treatment Context
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Stack spacing={2}>
-            <TextField
-              label="Diagnosis"
-              value={consultation?.diagnosis || ''}
-              multiline
-              minRows={2}
-              InputProps={{ readOnly: true }}
-              fullWidth
-            />
-            <TextField
-              label="Treatment plan"
-              value={consultation?.treatmentPlan || ''}
-              multiline
-              minRows={2}
-              InputProps={{ readOnly: true }}
-              fullWidth
-            />
-            <TextField
-              label="Patient instructions"
-              value={consultation?.instructions || ''}
-              multiline
-              minRows={2}
-              InputProps={{ readOnly: true }}
-              fullWidth
-            />
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            sx={{
+              mb: 2,
+              justifyContent: 'space-between',
+              alignItems: { xs: 'stretch', sm: 'center' },
+            }}
+          >
+            <Typography variant="h6">Consultation Summary</Typography>
+            {!readOnly && consultation?.status === 'in_progress' && (
+              <Button
+                startIcon={<EditOutlinedIcon />}
+                onClick={() =>
+                  navigate(`/doctor/consultations/${consultation._id}`)
+                }
+              >
+                Edit Consultation
+              </Button>
+            )}
           </Stack>
+          <Divider sx={{ mb: 2 }} />
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: 'minmax(0, 1fr)',
+                md: 'repeat(2, minmax(0, 1fr))',
+              },
+              gap: 1.5,
+            }}
+          >
+            {[
+              ['Diagnosis', consultation?.diagnosis],
+              ['Treatment Plan', consultation?.treatmentPlan],
+              ['Patient Instructions', consultation?.instructions],
+              ['Chief Complaint', consultation?.chiefComplaint],
+              ['Symptoms', consultation?.symptoms],
+            ].map(([label, value]) => (
+              <Box
+                key={label}
+                sx={{
+                  minWidth: 0,
+                  p: 1.75,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                  bgcolor: 'background.default',
+                  gridColumn:
+                    label === 'Diagnosis' ||
+                    label === 'Treatment Plan' ||
+                    label === 'Patient Instructions'
+                      ? '1 / -1'
+                      : undefined,
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  {label}
+                </Typography>
+                <Typography sx={{ mt: 0.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                  {value?.trim() || 'Not yet provided'}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
         </Paper>
 
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
@@ -383,26 +414,6 @@ function DoctorPrescriptionWorkspace() {
           </Stack>
         </Paper>
 
-        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            General Instructions
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <TextField
-            label="General instructions"
-            value={draft.generalInstructions}
-            disabled={readOnly || saving}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                generalInstructions: event.target.value,
-              }))
-            }
-            multiline
-            minRows={3}
-            fullWidth
-          />
-        </Paper>
       </Stack>
 
       {!readOnly && (
