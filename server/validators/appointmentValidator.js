@@ -142,6 +142,22 @@ const validateAppointmentReschedule = (req, res, next) => {
   next();
 };
 
+const validateAppointmentDeletion = (req, res, next) => {
+  const { reason } = req.body || {};
+  if (
+    typeof reason !== "string" ||
+    !reason.trim() ||
+    reason.trim().length > 500 ||
+    Object.keys(req.body || {}).some((key) => key !== "reason")
+  ) {
+    return res.status(400).json({
+      message: "A deletion reason of 1 to 500 characters is required.",
+    });
+  }
+  req.appointmentDeletionReason = reason.trim();
+  next();
+};
+
 module.exports = {
   validateAppointmentBooking,
   validateAppointmentListQuery,
@@ -150,4 +166,5 @@ module.exports = {
   validateAppointmentRejection,
   validateAppointmentCancellation,
   validateAppointmentReschedule,
+  validateAppointmentDeletion,
 };

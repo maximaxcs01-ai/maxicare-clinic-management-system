@@ -19,6 +19,17 @@ const { recordAudit } = require("./auditService");
 const SLOT_UNAVAILABLE_MESSAGE = "The selected appointment slot is no longer available.";
 const TERMINAL_STATUSES = ["cancelled", "rejected", "completed", "no_show"];
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+const APPOINTMENT_DELETE_STATUSES = new Set([
+  "pending",
+  "confirmed",
+  "checked_in",
+  "waiting",
+  "cancelled",
+  "rejected",
+  "no_show",
+]);
+const FINALIZED_APPOINTMENT_DELETE_MESSAGE =
+  "This appointment cannot be deleted because it is part of finalized medical history.";
 
 const populateAppointment = (query) =>
   query
@@ -195,10 +206,15 @@ const listAllAppointments = async (query) => {
     .filter(Boolean);
   const [issuedPrescriptionIds, consultationQueueEntries, activeQueueEntries] =
     await Promise.all([
-      Prescription.distinct("consultationId", {
-        consultationId: { $in: consultationIds },
+      Prescription.find({
         status: "issued",
-      }),
+        $or: [
+          { appointmentId: { $in: appointmentIds } },
+          { consultationId: { $in: consultationIds } },
+        ],
+      })
+        .select("appointmentId consultationId")
+        .lean(),
       QueueEntry.find({
         appointmentId: { $in: appointmentIds },
         queueStatus: "in_consultation",
@@ -214,7 +230,16 @@ const listAllAppointments = async (query) => {
         .select("patientId")
         .lean(),
     ]);
-  const issuedIds = new Set(issuedPrescriptionIds.map(String));
+  const issuedIds = new Set(
+    issuedPrescriptionIds.map((prescription) =>
+      String(prescription.consultationId)
+    )
+  );
+  const issuedAppointmentIds = new Set(
+    issuedPrescriptionIds.map((prescription) =>
+      String(prescription.appointmentId)
+    )
+  );
   const activePatientIds = new Set(
     activeQueueEntries.map((entry) => String(entry.patientId))
   );
@@ -255,11 +280,24 @@ const listAllAppointments = async (query) => {
           : appointment?.status !== "in_consultation"),
     });
   }
+  const consultationStatusesByAppointment = new Map();
+  for (const consultation of consultations) {
+    const key = String(consultation.appointmentId);
+    const statuses = consultationStatusesByAppointment.get(key) || [];
+    statuses.push(consultation.status);
+    consultationStatusesByAppointment.set(key, statuses);
+  }
   return {
     data: data.map((appointment) => ({
       ...appointment.toObject(),
       consultation:
         consultationByAppointment.get(String(appointment._id)) || null,
+      canDeleteAppointment:
+        APPOINTMENT_DELETE_STATUSES.has(appointment.status) &&
+        !issuedAppointmentIds.has(String(appointment._id)) &&
+        !(consultationStatusesByAppointment.get(String(appointment._id)) || []).some(
+          (status) => status !== "cancelled"
+        ),
     })),
     pagination: buildPagination(page, limit, total),
   };
@@ -474,6 +512,128 @@ const cancelAppointment = async (appointmentId, user, { cancellationReason }) =>
 
   await appointment.save();
   return populateAppointment(Appointment.findById(appointment._id));
+};
+
+const deleteAppointment = async (appointmentId, user, reason, request) => {
+  if (!mongoose.isValidObjectId(appointmentId)) {
+    throw new AppError("Invalid appointment", 400);
+  }
+  if (user.role !== "admin") {
+    throw new AppError("Not authorized for this action", 403);
+  }
+
+  const session = await mongoose.startSession();
+  let result;
+  try {
+    await session.withTransaction(async () => {
+      const appointment = await Appointment.findById(appointmentId).session(
+        session
+      );
+      if (!appointment) throw new AppError("Appointment not found", 404);
+      if (appointment.status === "completed") {
+        throw new AppError(FINALIZED_APPOINTMENT_DELETE_MESSAGE, 409);
+      }
+      if (appointment.status === "in_consultation") {
+        throw new AppError(
+          "Cancel or delete the active consultation before deleting this appointment.",
+          409
+        );
+      }
+      if (!APPOINTMENT_DELETE_STATUSES.has(appointment.status)) {
+        throw new AppError(
+          "This appointment is not in a status eligible for deletion.",
+          409
+        );
+      }
+
+      const consultations = await Consultation.find({
+        appointmentId: appointment._id,
+      })
+        .select("_id status")
+        .session(session);
+      if (consultations.some(({ status }) => status === "completed")) {
+        throw new AppError(FINALIZED_APPOINTMENT_DELETE_MESSAGE, 409);
+      }
+      if (consultations.some(({ status }) => status === "in_progress")) {
+        throw new AppError(
+          "Cancel or delete the active consultation before deleting this appointment.",
+          409
+        );
+      }
+      if (consultations.some(({ status }) => status !== "cancelled")) {
+        throw new AppError(
+          "This appointment has a consultation that is not eligible for deletion.",
+          409
+        );
+      }
+
+      const consultationIds = consultations.map(({ _id }) => _id);
+      const prescriptions = await Prescription.find({
+        $or: [
+          { appointmentId: appointment._id },
+          { consultationId: { $in: consultationIds } },
+        ],
+      })
+        .select("_id status")
+        .session(session);
+      if (prescriptions.some(({ status }) => status === "issued")) {
+        throw new AppError(FINALIZED_APPOINTMENT_DELETE_MESSAGE, 409);
+      }
+      if (prescriptions.some(({ status }) => status !== "draft")) {
+        throw new AppError(
+          "This appointment has a prescription that is not eligible for deletion.",
+          409
+        );
+      }
+
+      await recordAudit(
+        {
+          actorUserId: user._id,
+          actorRole: user.role,
+          action: "appointment.deleted",
+          entityType: "Appointment",
+          entityId: appointment._id,
+          patientId: appointment.patientId,
+          description: "Eligible appointment and non-final operational records deleted.",
+          metadata: {
+            appointmentId: appointment._id,
+            actorRole: user.role,
+            reason,
+            previousStatus: appointment.status,
+          },
+        },
+        request,
+        session
+      );
+
+      await QueueEntry.deleteMany({ appointmentId: appointment._id }).session(
+        session
+      );
+      await Prescription.deleteMany({
+        _id: { $in: prescriptions.map(({ _id }) => _id) },
+        status: "draft",
+      }).session(session);
+      if (consultations.length) {
+        await Consultation.deleteMany({
+          _id: { $in: consultations.map(({ _id }) => _id) },
+          status: "cancelled",
+        }).session(session);
+      }
+      await Appointment.deleteOne({ _id: appointment._id }).session(session);
+
+      result = {
+        appointmentId: appointment._id,
+        deleted: true,
+        previousStatus: appointment.status,
+        deletedQueueEntries: true,
+        deletedCancelledConsultations: consultations.length,
+        deletedDraftPrescriptions: prescriptions.length,
+      };
+    });
+  } finally {
+    await session.endSession();
+  }
+  return result;
 };
 
 const rescheduleAppointment = async (
@@ -704,6 +864,7 @@ module.exports = {
   confirmAppointment,
   rejectAppointment,
   cancelAppointment,
+  deleteAppointment,
   rescheduleAppointment,
   recordTriageVitals,
   getPatientForUser,

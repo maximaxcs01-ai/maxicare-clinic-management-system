@@ -36,6 +36,7 @@ import {
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import AppointmentDeletionAction from '../components/AppointmentDeletionAction'
 import ConsultationOperationalActions from '../components/ConsultationOperationalActions'
 import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
@@ -1063,6 +1064,16 @@ function AppointmentsManagement() {
                   consultation={detailModal.appointment.consultation}
                   canCancel={user?.role === 'admin' || user?.role === 'receptionist'}
                   allowDelete={isAdmin}
+                  onCompleted={(message) => {
+                    setDetailModal({ open: false, appointment: null })
+                    setNotice({ severity: 'success', message })
+                    setRefreshKey((current) => current + 1)
+                  }}
+                />
+              )}
+              {isAdmin && (
+                <AppointmentDeletionAction
+                  appointment={detailModal.appointment}
                   onCompleted={(message) => {
                     setDetailModal({ open: false, appointment: null })
                     setNotice({ severity: 'success', message })

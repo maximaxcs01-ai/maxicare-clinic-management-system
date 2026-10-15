@@ -103,16 +103,25 @@ test("Admin and Receptionist can use staff appointment operations", () => {
     ["/:id", "get"],
     ["/:id/confirm", "patch"],
     ["/:id/reject", "patch"],
+    ["/:id", "delete"],
     ["/:id/check-in", "patch"],
     ["/:id/queue", "post"],
     ["/:id/triage", "patch"],
     ["/:id/reschedule", "patch"],
   ]) {
-    assertAllowedForOperations(
-      getRouteGuard(appointmentRoutes, path, method),
-      ["admin", "receptionist"],
-      ["doctor"],
-    );
+    if (method === "delete") {
+      assertAllowedForOperations(
+        getRouteGuard(appointmentRoutes, path, method),
+        ["admin"],
+        ["receptionist", "doctor", "patient"],
+      );
+    } else {
+      assertAllowedForOperations(
+        getRouteGuard(appointmentRoutes, path, method),
+        ["admin", "receptionist"],
+        ["doctor"],
+      );
+    }
   }
 });
 

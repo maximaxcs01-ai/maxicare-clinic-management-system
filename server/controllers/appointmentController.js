@@ -86,6 +86,20 @@ const getAppointment = async (req, res, next) => {
   }
 };
 
+const deleteAppointment = async (req, res, next) => {
+  try {
+    const data = await service.deleteAppointment(
+      req.params.id,
+      req.user,
+      req.appointmentDeletionReason,
+      req
+    );
+    res.json({ message: "Appointment and eligible operational records deleted.", data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const confirmAppointment = async (req, res, next) => {
   try {
     const appointment = await service.confirmAppointment(req.params.id, req.user);
@@ -237,6 +251,7 @@ module.exports = {
   getMyAppointment,
   listAllAppointments,
   getAppointment,
+  deleteAppointment,
   confirmAppointment,
   rejectAppointment,
   cancelAppointment,

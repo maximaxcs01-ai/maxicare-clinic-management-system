@@ -12,6 +12,7 @@ const SAFE_METADATA_KEYS = new Set([
   "doctorId",
   "serviceId",
   "appointmentId",
+  "previousStatus",
   "queueEntryId",
   "consultationId",
   "prescriptionId",

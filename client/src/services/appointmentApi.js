@@ -9,6 +9,8 @@ export const getAppointments = (params) => api.get('/appointments', { params })
 export const getDoctorAppointments = (params) =>
   api.get('/appointments/doctor/my', { params })
 export const getAppointment = (id) => api.get(`/appointments/${id}`)
+export const deleteAppointment = (id, reason) =>
+  api.delete(`/appointments/${id}`, { data: { reason } })
 export const confirmAppointment = (id) =>
   api.patch(`/appointments/${id}/confirm`)
 export const rejectAppointment = (id, data) =>

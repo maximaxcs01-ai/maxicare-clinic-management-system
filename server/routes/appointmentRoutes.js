@@ -9,6 +9,7 @@ const {
   validateAppointmentRejection,
   validateAppointmentCancellation,
   validateAppointmentReschedule,
+  validateAppointmentDeletion,
 } = require("../validators/appointmentValidator");
 const { validateTriageVitals } = require("../validators/triageValidator");
 
@@ -42,6 +43,13 @@ router.get(
   authorize("admin", "receptionist"),
   validateStaffAppointmentQuery,
   controller.listAllAppointments
+);
+
+router.delete(
+  "/:id",
+  authorize("admin"),
+  validateAppointmentDeletion,
+  controller.deleteAppointment
 );
 
 router.get(
