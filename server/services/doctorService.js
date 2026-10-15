@@ -1,4 +1,3 @@
-const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 const Appointment = require("../models/Appointment");
@@ -11,7 +10,6 @@ const User = require("../models/User");
 const AppError = require("../utils/AppError");
 const { getNextDoctorNumber } = require("./doctorNumberService");
 const { buildPagination, escapeRegex, getPagination } = require("../utils/pagination");
-const { sendDoctorInvitation } = require("./accountSetupService");
 const { recordAudit } = require("./auditService");
 const cloudinaryService = require("./cloudinaryService");
 
@@ -139,11 +137,10 @@ const updateMyProfileImage = async (userId, file) => {
 };
 
 const createDoctor = async (data, actor, request) => {
-  const internalPassword = crypto.randomBytes(24).toString("base64url");
-  const password = await bcrypt.hash(internalPassword, 10);
+  const { temporaryPassword, ...doctorData } = data;
+  const password = await bcrypt.hash(temporaryPassword, 10);
   const session = await mongoose.startSession();
   let createdDoctor;
-  let invitationEmailFailed = false;
   try {
     await session.withTransaction(async () => {
       await ensureServicesExist(data.serviceIds, session);
@@ -156,11 +153,11 @@ const createDoctor = async (data, actor, request) => {
         role: "doctor",
         status: data.status,
         emailVerified: true,
-        passwordSetupRequired: true,
+        passwordSetupRequired: false,
       }], { session });
       const doctorNumber = await getNextDoctorNumber(session);
       [createdDoctor] = await Doctor.create([{
-        ...data,
+        ...doctorData,
         userId: user._id,
         doctorNumber,
       }], { session });
@@ -179,12 +176,6 @@ const createDoctor = async (data, actor, request) => {
           session
         );
       }
-
-      try {
-        await sendDoctorInvitation(user);
-      } catch (error) {
-        invitationEmailFailed = true;
-      }
     });
   } finally { await session.endSession(); }
 
@@ -194,7 +185,6 @@ const createDoctor = async (data, actor, request) => {
 
   return {
     doctor,
-    invitationEmailFailed,
   };
 };
 
