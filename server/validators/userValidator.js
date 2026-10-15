@@ -25,13 +25,11 @@ const validateCreateUser = (req, res, next) => {
   if (error) return res.status(400).json({ message: error });
   const role = clean(req.body?.role);
   const status = clean(req.body?.status) || "active";
-  const password = typeof req.body?.password === "string" ? req.body.password : "";
   if (!["receptionist", "admin"].includes(role)) {
     return res.status(400).json({ message: "Create doctors through Doctor Management; patients must self-register" });
   }
   if (!["active", "inactive"].includes(status)) return res.status(400).json({ message: "Invalid user status" });
-  if (password.length < 8 || password.length > 16) return res.status(400).json({ message: "Password must be 8 to 16 characters" });
-  req.validatedUser = { ...user, role, status, password };
+  req.validatedUser = { ...user, role, status };
   next();
 };
 

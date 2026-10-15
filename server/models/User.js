@@ -57,7 +57,25 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
 
+    termsAcceptedAt: { type: Date },
+
+    privacyAcceptedAt: { type: Date },
+
+    termsVersion: { type: String, trim: true },
+
+    notificationPreferences: {
+      inApp: {
+        type: Boolean,
+        default: true,
+      },
+    },
+
     passwordSetupRequired: {
+      type: Boolean,
+      default: false,
+    },
+
+    requiresPasswordChange: {
       type: Boolean,
       default: false,
     },

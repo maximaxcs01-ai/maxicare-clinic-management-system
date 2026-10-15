@@ -90,6 +90,25 @@ test("patient cannot record triage vitals", async () => {
   assert.equal(appointment.triage, undefined);
 });
 
+test("doctor cannot edit nurse-recorded triage vitals", async () => {
+  appointment.status = "waiting";
+  appointment.triage = {
+    vitals: { ...vitals },
+    recordedBy: receptionistId,
+    recordedAt: new Date("2026-10-16T01:00:00Z"),
+  };
+  await assert.rejects(
+    appointmentService.recordTriageVitals(
+      appointmentId,
+      { _id: "100000000000000000000004", role: "doctor" },
+      { ...vitals, pulse: 99 }
+    ),
+    { statusCode: 403 }
+  );
+  assert.equal(appointment.triage.vitals.pulse, 72);
+  assert.equal(appointment.triage.recordedBy, receptionistId);
+});
+
 test("completed consultation appointments cannot have triage changed", async () => {
   appointment.status = "completed";
   await assert.rejects(

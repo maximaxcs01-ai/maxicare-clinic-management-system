@@ -14,7 +14,9 @@ import {
   TableRow,
   Tabs,
   Typography,
+  Button,
 } from '@mui/material'
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import StatusChip from '../components/common/StatusChip'
@@ -116,13 +118,14 @@ function PatientMedicalHistory() {
                   {tab === 'appointments' ? 'Appointment Status' : 'Doctor'}
                 </TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               <TableState
                 loading={loading}
                 empty={!pageRows.length}
-                colSpan={4}
+                colSpan={5}
                 emptyMessage={`No ${tabLabels[tab].toLowerCase()} found.`}
               />
               {!loading &&
@@ -134,29 +137,15 @@ function PatientMedicalHistory() {
                     : isAppointment
                       ? row.startAt
                       : row.issuedAt
+                  const consultationId = isConsultation
+                    ? row._id
+                    : isAppointment
+                      ? row.consultationId
+                      : row.consultationId?._id || row.consultationId
                   return (
                     <TableRow
                       key={row._id}
                       hover
-                      sx={{
-                        cursor:
-                          isConsultation || tab === 'prescriptions'
-                            ? 'pointer'
-                            : 'default',
-                      }}
-                      onClick={() => {
-                        if (isConsultation) {
-                          navigate(`/patient/medical-history/${row._id}`)
-                        } else if (tab === 'prescriptions') {
-                          const consultationId =
-                            row.consultationId?._id || row.consultationId
-                          if (consultationId) {
-                            navigate(
-                              `/patient/medical-history/${consultationId}`,
-                            )
-                          }
-                        }
-                      }}
                     >
                       <TableCell>{formatDateTime(dateValue)}</TableCell>
                       <TableCell>
@@ -185,6 +174,23 @@ function PatientMedicalHistory() {
                               : row.status
                           }
                         />
+                      </TableCell>
+                      <TableCell align="right">
+                        {consultationId &&
+                          (!isAppointment || row.status === 'completed') && (
+                            <Button
+                              size="small"
+                              variant="text"
+                              startIcon={<AssignmentOutlinedIcon />}
+                              onClick={() =>
+                                navigate(
+                                  `/patient/medical-history/${consultationId}`,
+                                )
+                              }
+                            >
+                              View Visit Summary
+                            </Button>
+                          )}
                       </TableCell>
                     </TableRow>
                   )

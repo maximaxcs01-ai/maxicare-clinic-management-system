@@ -13,6 +13,8 @@ const {
   resetPassword,
 } = require("../services/passwordResetService");
 const { validateSetupToken, completeSetup } = require("../services/accountSetupService");
+const { recordRequestAudit } = require("../services/auditService");
+const accountSettingsService = require("../services/accountSettingsService");
 
 const PASSWORD_RESET_SAFE_MESSAGE =
   "If an account exists for that email, a verification code has been sent.";
@@ -88,7 +90,10 @@ const loginUser = async (req, res, next) => {
       });
     }
 
-    if (user.passwordSetupRequired === true) {
+    if (
+      user.passwordSetupRequired === true &&
+      user.requiresPasswordChange !== true
+    ) {
       return res.status(403).json({
         message: "Account setup is required. Please use the invitation sent to your email.",
       });
@@ -182,6 +187,47 @@ const setAccountPassword = async (req, res, next) => {
   }
 };
 
+const completeTemporaryPasswordSetup = async (req, res, next) => {
+  try {
+    if (req.user.requiresPasswordChange !== true) {
+      return res.status(409).json({ message: "Password setup is already complete" });
+    }
+
+    const password = await bcrypt.hash(req.validatedAuth.newPassword, 10);
+    const user = await User.findOneAndUpdate(
+      { _id: req.user._id, requiresPasswordChange: true },
+      {
+        $set: {
+          password,
+          passwordSetupRequired: false,
+          requiresPasswordChange: false,
+        },
+        $inc: { tokenVersion: 1 },
+      },
+      { new: true, runValidators: true }
+    ).select("+tokenVersion");
+
+    if (!user) {
+      return res.status(409).json({ message: "Password setup is already complete" });
+    }
+
+    await recordRequestAudit(req, {
+      action: "password_setup.completed",
+      entityType: "User",
+      entityId: user._id,
+      description: "Temporary password setup completed.",
+      metadata: { userId: user._id },
+    });
+
+    res.status(200).json({
+      message: "Password updated successfully",
+      ...createAuthSession(user),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getCurrentUser = (req, res) => {
   res.status(200).json({
     user: {
@@ -193,11 +239,59 @@ const getCurrentUser = (req, res) => {
       role: req.user.role,
       status: req.user.status,
       emailVerified: req.user.emailVerified,
+      mustChangePassword: req.user.requiresPasswordChange === true,
       ...(req.user.role === "doctor"
         ? {}
         : { profileImage: req.user.profileImage }),
     },
   });
+};
+
+const getAccountSettings = async (req, res, next) => {
+  try {
+    res.status(200).json({
+      data: await accountSettingsService.getAccountSettings(req.user._id),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateNotificationPreference = async (req, res, next) => {
+  try {
+    res.status(200).json({
+      data: await accountSettingsService.updateNotificationPreference(
+        req.user._id,
+        req.validatedNotificationPreference.inApp
+      ),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const changeAuthenticatedPassword = async (req, res, next) => {
+  try {
+    const user = await accountSettingsService.changePassword(
+      req.user._id,
+      req.validatedAuth
+    );
+    res.status(200).json({
+      message: "Password changed successfully.",
+      ...createAuthSession(user),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const logoutAllDevices = async (req, res, next) => {
+  try {
+    await accountSettingsService.signOutAllDevices(req.user._id);
+    res.status(200).json({ message: "All sessions have been signed out." });
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {
@@ -212,4 +306,9 @@ module.exports = {
   updatePassword,
   validateAccountSetupToken,
   setAccountPassword,
+  completeTemporaryPasswordSetup,
+  getAccountSettings,
+  updateNotificationPreference,
+  changeAuthenticatedPassword,
+  logoutAllDevices,
 };

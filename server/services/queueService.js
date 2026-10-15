@@ -53,7 +53,14 @@ const queuePopulation = (query) =>
     .populate("patientId", "patientNumber firstName middleName lastName mobileNumber email")
     .populate("doctorId", "doctorNumber firstName middleName lastName specialization")
     .populate("serviceId", "name description durationMinutes fee")
-    .populate("appointmentId", "bookingType status startAt endAt triage");
+    .populate({
+      path: "appointmentId",
+      select: "bookingType status startAt endAt triage",
+      populate: {
+        path: "triage.recordedBy",
+        select: "firstName lastName role",
+      },
+    });
 
 const appointmentPopulation = (query) =>
   query
@@ -557,25 +564,79 @@ const listTodayQueue = async (user) => {
   return { date, timezone: CLINIC_TIMEZONE, data };
 };
 
-const callNextForDoctor = async (doctorId) => {
+const callNextForDoctor = async (doctorId, user) => {
   if (!mongoose.isValidObjectId(doctorId)) {
     throw new AppError("Invalid doctor", 400);
   }
-  const doctor = await Doctor.findOne({ _id: doctorId, status: "active" }).select("_id");
-  if (!doctor) throw new AppError("Active doctor not found", 404);
   const { start, end } = getManilaDayBounds();
-  const entry = await QueueEntry.findOneAndUpdate(
-    {
-      doctorId,
-      active: true,
-      queueStatus: "waiting",
-      joinedAt: { $gte: start, $lt: end },
-    },
-    { $set: { queueStatus: "called", calledAt: new Date() } },
-    { new: true, sort: { joinedAt: 1, _id: 1 } }
-  );
-  if (!entry) throw new AppError("There are no waiting patients for this doctor.", 404);
-  return queuePopulation(QueueEntry.findById(entry._id));
+  const session = await mongoose.startSession();
+  let queueEntryId;
+  try {
+    await session.withTransaction(async () => {
+      const doctorFilter = { _id: doctorId, status: "active" };
+      if (user.role === "doctor") doctorFilter.userId = user._id;
+
+      const doctor = await Doctor.findOne(doctorFilter)
+        .select("_id")
+        .session(session);
+      if (!doctor) {
+        throw new AppError(
+          user.role === "doctor"
+            ? "You can only call patients from your own queue."
+            : "Active doctor not found",
+          user.role === "doctor" ? 403 : 404
+        );
+      }
+
+      // Serializes concurrent call-next attempts for the same Doctor.
+      await Doctor.updateOne(
+        { _id: doctor._id },
+        { $set: { updatedAt: new Date() } },
+        { session }
+      );
+
+      const activePatient = await QueueEntry.exists({
+        doctorId: doctor._id,
+        joinedAt: { $gte: start, $lt: end },
+        $or: [
+          { active: true, queueStatus: "called" },
+          { queueStatus: "in_consultation" },
+        ],
+      }).session(session);
+      if (activePatient) {
+        throw new AppError(
+          "You already have an active patient. Complete or return the current patient before calling the next one.",
+          409
+        );
+      }
+
+      const entry = await QueueEntry.findOneAndUpdate(
+        {
+          doctorId: doctor._id,
+          active: true,
+          queueStatus: "waiting",
+          joinedAt: { $gte: start, $lt: end },
+        },
+        { $set: { queueStatus: "called", calledAt: new Date() } },
+        {
+          new: true,
+          sort: { joinedAt: 1, _id: 1 },
+          session,
+        }
+      );
+      if (!entry) {
+        throw new AppError(
+          "There are no waiting patients for this doctor.",
+          404
+        );
+      }
+      queueEntryId = entry._id;
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  return queuePopulation(QueueEntry.findById(queueEntryId));
 };
 
 const returnQueueEntryToWaiting = async (queueEntryId) => {

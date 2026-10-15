@@ -813,7 +813,7 @@ function AppointmentsManagement() {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Reject Appointment</DialogTitle>
+        <DialogTitle>Reject Appointment?</DialogTitle>
         <DialogContent dividers>
           {rejectDialog.error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -860,7 +860,7 @@ function AppointmentsManagement() {
             onClick={handleRejectAction}
             disabled={rejectDialog.loading || !rejectDialog.reason.trim()}
           >
-            {rejectDialog.loading ? 'Rejecting...' : 'Confirm Rejection'}
+            {rejectDialog.loading ? 'Rejecting...' : 'Reject Appointment'}
           </Button>
         </DialogActions>
       </Dialog>

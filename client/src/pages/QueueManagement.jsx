@@ -6,10 +6,6 @@ import {
   Alert,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Grid,
   IconButton,
   Paper,
@@ -28,6 +24,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import StatusChip from '../components/common/StatusChip'
+import ConfirmDialog from '../components/common/ConfirmDialog'
 import TableState from '../components/common/TableState'
 import ConsultationOperationalActions from '../components/ConsultationOperationalActions'
 import TriageVitalsDialog from '../components/TriageVitalsDialog'
@@ -129,6 +126,8 @@ function QueueManagement() {
     })
     return firstWaiting
   }, [rows])
+  const doctorHasCalledPatient =
+    isDoctor && rows.some((entry) => entry.queueStatus === 'called')
 
   const runQueueAction = async (key, action, successMessage) => {
     setBusyKey(key)
@@ -310,6 +309,7 @@ function QueueManagement() {
                 <TableCell>Service</TableCell>
                 <TableCell>Arrived</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell>Vitals</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -317,7 +317,7 @@ function QueueManagement() {
               <TableState
                 loading={loading}
                 empty={!rows.length}
-                colSpan={isDoctor ? 6 : 7}
+                colSpan={isDoctor ? 7 : 8}
                 emptyMessage="No active patients in the queue today."
               />
               {!loading &&
@@ -356,6 +356,8 @@ function QueueManagement() {
                       <TableCell>{formatTime(entry.joinedAt)}</TableCell>
                       <TableCell>
                         <StatusChip status={entry.queueStatus} />
+                      </TableCell>
+                      <TableCell>
                         <Typography
                           variant="caption"
                           color={entry.appointmentId?.triage?.recordedAt ? 'success.main' : 'text.secondary'}
@@ -369,9 +371,39 @@ function QueueManagement() {
                       </TableCell>
                       <TableCell align="right">
                         {isDoctor ? (
-                          entry.queueStatus === 'called' && (
+                          <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
+                            {['waiting', 'called'].includes(entry.queueStatus) && (
+                              <Tooltip title={entry.appointmentId?.triage?.recordedAt ? 'View recorded vitals' : 'No vitals recorded yet.'}>
+                                <span>
+                                  <Button
+                                    size="medium"
+                                    variant="outlined"
+                                    disabled={!entry.appointmentId?.triage?.recordedAt}
+                                    onClick={() => setTriageAppointment({ ...entry.appointmentId, patientId: entry.patientId })}
+                                  >
+                                    View Vitals
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                            )}
+                            {entry.queueStatus === 'waiting' && (
+                              <Tooltip title={doctorHasCalledPatient ? 'Complete or return the active patient before calling the next one.' : isFirstWaiting ? 'Call the next patient' : 'Patients must be called in queue order.'}>
+                                <span>
+                                  <Button
+                                    size="medium"
+                                    variant="contained"
+                                    startIcon={<NotificationsActiveOutlinedIcon />}
+                                    disabled={Boolean(busyKey) || !isFirstWaiting || doctorHasCalledPatient}
+                                    onClick={() => runQueueAction(`call-${doctorId}`, () => callNextQueueEntry(doctorId), 'Next patient called.')}
+                                  >
+                                    Call Next
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                            )}
+                            {entry.queueStatus === 'called' && (
                             <Button
-                              size="small"
+                              size="medium"
                               variant="contained"
                               disabled={Boolean(busyKey)}
                               onClick={() => handleStartConsultation(entry)}
@@ -380,7 +412,8 @@ function QueueManagement() {
                                 ? 'Starting…'
                                 : 'Start Consultation'}
                             </Button>
-                          )
+                            )}
+                          </Stack>
                         ) : (
                           <Stack
                             direction="row"
@@ -486,28 +519,26 @@ function QueueManagement() {
         </TableContainer>
       </Paper>
 
-      <Dialog
+      <ConfirmDialog
         open={removeDialog.open}
-        onClose={
-          removeDialog.loading
-            ? undefined
-            : () =>
-                setRemoveDialog((current) => ({ ...current, open: false }))
+        title="Remove Patient from Queue?"
+        message="Are you sure you want to remove this patient from the active queue?"
+        confirmLabel="Remove"
+        severity="error"
+        error={removeDialog.error}
+        loading={removeDialog.loading}
+        confirmDisabled={!removeDialog.reason.trim()}
+        onCancel={() =>
+          setRemoveDialog((current) => ({ ...current, open: false }))
         }
+        onConfirm={handleRemove}
         maxWidth="sm"
-        fullWidth
       >
-        <DialogTitle>Remove patient from queue</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            {removeDialog.error && (
-              <Alert severity="error">{removeDialog.error}</Alert>
-            )}
-            <Typography variant="body2">
-              Provide a reason for removing{' '}
-              {removeDialog.entry?.patientId?.firstName || 'this patient'} from
-              the active queue.
-            </Typography>
+        <Stack spacing={2} sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Provide a reason for removing{' '}
+            {removeDialog.entry?.patientId?.firstName || 'this patient'}.
+          </Typography>
             <TextField
               required
               multiline
@@ -523,27 +554,8 @@ function QueueManagement() {
                 }))
               }
             />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button
-            disabled={removeDialog.loading}
-            onClick={() =>
-              setRemoveDialog((current) => ({ ...current, open: false }))
-            }
-          >
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={removeDialog.loading}
-            onClick={handleRemove}
-          >
-            {removeDialog.loading ? 'Removing…' : 'Remove from Queue'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </ConfirmDialog>
 
       <Snackbar
         open={Boolean(notice)}
@@ -565,6 +577,7 @@ function QueueManagement() {
         appointment={triageAppointment}
         open={Boolean(triageAppointment)}
         onClose={() => setTriageAppointment(null)}
+        readOnly={isDoctor}
         onSaved={(_, message) => {
           setTriageAppointment(null)
           setNotice({ severity: 'success', message })

@@ -12,7 +12,7 @@ router.get("/my", authorize("doctor"), controller.listQueue);
 router.get("/", authorize("admin", "receptionist"), controller.listQueue);
 router.post(
   "/doctors/:doctorId/call-next",
-  authorize("admin", "receptionist"),
+  authorize("admin", "receptionist", "doctor"),
   validateObjectIdParam("doctorId"),
   controller.callNext
 );

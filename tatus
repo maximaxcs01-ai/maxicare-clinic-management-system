@@ -1,0 +1,14 @@
+warning: in the working copy of 'client/src/components/ProtectedRoute.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/RoleRoute.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/TriageVitalsDialog.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/context/AuthProvider.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/services/userApi.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/middleware/authMiddleware.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/models/PendingRegistration.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/routes/userRoutes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/services/authService.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/services/userService.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/tests/doctorCreation.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/tests/triageWorkflow.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/validators/doctorValidator.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/validators/userValidator.js', LF will be replaced by CRLF the next time Git touches it

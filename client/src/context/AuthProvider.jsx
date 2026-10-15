@@ -28,6 +28,12 @@ function AuthProvider({ children }) {
     setLoading(true)
   }, [])
 
+  const updateSession = useCallback((nextToken, nextUser) => {
+    storeSession(nextToken, nextUser)
+    setToken(nextToken)
+    setUser(nextUser)
+  }, [])
+
   const updateUser = useCallback(
     (updates) => {
       setUser((currentUser) => {
@@ -56,7 +62,7 @@ function AuthProvider({ children }) {
         if (!active) return
 
         let currentUser = response.data.user
-        if (currentUser.role === 'doctor') {
+        if (currentUser.role === 'doctor' && currentUser.mustChangePassword !== true) {
           try {
             const doctorResponse = await api.get('/doctors/me')
             currentUser = {
@@ -74,7 +80,9 @@ function AuthProvider({ children }) {
         setUser(currentUser)
       } catch (requestError) {
         const status = requestError.response?.status
-        if (active && (status === 401 || status === 403)) logout()
+        const passwordChangeRequired =
+          requestError.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED'
+        if (active && (status === 401 || (status === 403 && !passwordChangeRequired))) logout()
       } finally {
         if (active) setLoading(false)
       }
@@ -87,8 +95,8 @@ function AuthProvider({ children }) {
   }, [logout, token])
 
   const value = useMemo(
-    () => ({ token, user, loading, login, logout, updateUser }),
-    [token, user, loading, login, logout, updateUser],
+    () => ({ token, user, loading, login, logout, updateSession, updateUser }),
+    [token, user, loading, login, logout, updateSession, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

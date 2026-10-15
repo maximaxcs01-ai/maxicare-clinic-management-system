@@ -58,6 +58,23 @@ const protect = async (req, res, next) => {
     }
 
     req.user = user;
+
+    const requestPath = req.originalUrl.split("?")[0].replace(/\/$/, "");
+    const passwordSetupAllowed = new Set([
+      "/api/auth/me",
+      "/api/auth/complete-password-setup",
+    ]);
+    if (
+      user.requiresPasswordChange === true &&
+      !passwordSetupAllowed.has(requestPath)
+    ) {
+      return res.status(403).json({
+        message: "You must change your temporary password before continuing.",
+        code: "PASSWORD_CHANGE_REQUIRED",
+        mustChangePassword: true,
+      });
+    }
+
     next();
   } catch (error) {
     next(error);

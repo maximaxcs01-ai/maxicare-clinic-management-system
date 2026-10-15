@@ -133,7 +133,28 @@ const listPatientAppointments = async (patientId, query, bucket) => {
     Appointment.countDocuments(filter),
   ]);
 
-  return { data, pagination: buildPagination(page, limit, total) };
+  const completedAppointmentIds = data
+    .filter((appointment) => appointment.status === "completed")
+    .map((appointment) => appointment._id);
+  const consultations = completedAppointmentIds.length
+    ? await Consultation.find({
+        patientId,
+        appointmentId: { $in: completedAppointmentIds },
+        status: "completed",
+      }).select("appointmentId")
+    : [];
+  const consultationByAppointment = new Map(
+    consultations.map((consultation) => [
+      String(consultation.appointmentId),
+      consultation._id,
+    ])
+  );
+  const safeData = data.map((appointment) => ({
+    ...(appointment.toObject ? appointment.toObject() : appointment),
+    consultationId: consultationByAppointment.get(String(appointment._id)),
+  }));
+
+  return { data: safeData, pagination: buildPagination(page, limit, total) };
 };
 
 const listAllAppointments = async (query) => {

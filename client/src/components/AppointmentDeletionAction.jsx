@@ -2,14 +2,11 @@ import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined
 import {
   Alert,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Stack,
   TextField,
 } from '@mui/material'
 import { useState } from 'react'
+import ConfirmDialog from './common/ConfirmDialog'
 import { deleteAppointment } from '../services/appointmentApi'
 
 function AppointmentDeletionAction({
@@ -63,48 +60,38 @@ function AppointmentDeletionAction({
       >
         Delete Appointment
       </Button>
-      <Dialog open={open} onClose={close} maxWidth="xs" fullWidth>
-        <DialogTitle>Delete appointment?</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <Alert severity="error">
-              This permanently removes this eligible appointment and its
-              non-final operational records.
-            </Alert>
-            <TextField
-              label="Reason"
-              required
-              autoFocus
-              multiline
-              minRows={2}
-              maxRows={5}
-              value={reason}
-              onChange={(event) => {
-                setReason(event.target.value)
-                setError('')
-              }}
-              inputProps={{ maxLength: 500 }}
-              helperText={`${reason.length}/500`}
-              disabled={loading}
-              error={Boolean(error)}
-            />
-            {error && <Alert severity="error">{error}</Alert>}
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={close} disabled={loading}>
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={submit}
-            disabled={loading || !reason.trim()}
-          >
-            {loading ? 'Deleting...' : 'Delete Appointment'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={open}
+        title="Delete Appointment?"
+        message="This permanently removes this eligible operational appointment and its safe linked records. This action cannot be undone."
+        confirmLabel="Delete Appointment"
+        severity="error"
+        loading={loading}
+        confirmDisabled={!reason.trim()}
+        onCancel={close}
+        onConfirm={submit}
+      >
+        <Stack spacing={2} sx={{ mt: 2 }}>
+          <TextField
+            label="Reason"
+            required
+            autoFocus
+            multiline
+            minRows={2}
+            maxRows={5}
+            value={reason}
+            onChange={(event) => {
+              setReason(event.target.value)
+              setError('')
+            }}
+            inputProps={{ maxLength: 500 }}
+            helperText={`${reason.length}/500`}
+            disabled={loading}
+            error={Boolean(error)}
+          />
+          {error && <Alert severity="error">{error}</Alert>}
+        </Stack>
+      </ConfirmDialog>
     </>
   )
 }

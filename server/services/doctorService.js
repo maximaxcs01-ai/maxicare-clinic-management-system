@@ -13,6 +13,8 @@ const { buildPagination, escapeRegex, getPagination } = require("../utils/pagina
 const { recordAudit } = require("./auditService");
 const cloudinaryService = require("./cloudinaryService");
 const { validateProfileImageFile } = require("../middleware/doctorImageUpload");
+const { sendTemporaryPasswordEmail } = require("./emailService");
+const { generateTemporaryPassword } = require("./temporaryPasswordService");
 
 const ensureServicesExist = async (serviceIds, session) => {
   const count = await Service.countDocuments({ _id: { $in: serviceIds } }).session(session || null);
@@ -41,7 +43,7 @@ const listDoctors = async (query, role) => {
   const [data, total] = await Promise.all([
     Doctor.find(filter)
       .populate("serviceIds", "name status")
-      .populate("userId", "passwordSetupRequired status")
+      .populate("userId", "passwordSetupRequired requiresPasswordChange status")
       .sort({ lastName: 1, firstName: 1 })
       .skip(skip)
       .limit(limit),
@@ -55,13 +57,13 @@ const getDoctor = async (id, role) => {
   if (role === "patient") filter.status = "active";
   return Doctor.findOne(filter)
     .populate("serviceIds", "name status")
-    .populate("userId", "passwordSetupRequired status");
+    .populate("userId", "passwordSetupRequired requiresPasswordChange status");
 };
 
 const getMyDoctor = (userId) =>
   Doctor.findOne({ userId })
     .populate("serviceIds", "name status")
-    .populate("userId", "passwordSetupRequired status");
+    .populate("userId", "passwordSetupRequired requiresPasswordChange status");
 
 const updateMyProfileImage = async (userId, file) => {
   const fileError = validateProfileImageFile(file);
@@ -106,7 +108,8 @@ const updateMyProfileImage = async (userId, file) => {
 };
 
 const createDoctor = async (data, actor, request) => {
-  const { temporaryPassword, ...doctorData } = data;
+  const doctorData = data;
+  const temporaryPassword = generateTemporaryPassword();
   const password = await bcrypt.hash(temporaryPassword, 10);
   const session = await mongoose.startSession();
   let createdDoctor;
@@ -123,6 +126,7 @@ const createDoctor = async (data, actor, request) => {
         status: data.status,
         emailVerified: true,
         passwordSetupRequired: false,
+        requiresPasswordChange: true,
       }], { session });
       const doctorNumber = await getNextDoctorNumber(session);
       [createdDoctor] = await Doctor.create([{
@@ -145,12 +149,19 @@ const createDoctor = async (data, actor, request) => {
           session
         );
       }
+      await sendTemporaryPasswordEmail({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: "doctor",
+        temporaryPassword,
+      });
     });
   } finally { await session.endSession(); }
 
   const doctor = await Doctor.findById(createdDoctor._id)
     .populate("serviceIds", "name status")
-    .populate("userId", "passwordSetupRequired status");
+    .populate("userId", "passwordSetupRequired requiresPasswordChange status");
 
   return {
     doctor,
@@ -180,7 +191,7 @@ const updateDoctor = async (id, data) => {
   } finally { await session.endSession(); }
   return doctorId ? Doctor.findById(doctorId)
     .populate("serviceIds", "name status")
-    .populate("userId", "passwordSetupRequired status") : null;
+    .populate("userId", "passwordSetupRequired requiresPasswordChange status") : null;
 };
 
 const deleteDoctor = async (id) => {
@@ -222,17 +233,33 @@ const deleteDoctor = async (id) => {
 };
 
 const resendInvitation = async (id) => {
-  const doctor = await Doctor.findById(id).populate("userId", "passwordSetupRequired email firstName lastName");
+  const doctor = await Doctor.findById(id).populate("userId", "+tokenVersion requiresPasswordChange email firstName lastName role");
   if (!doctor) throw new AppError("Doctor not found", 404);
 
   const user = doctor.userId;
   if (!user) throw new AppError("Doctor user not found", 404);
-  if (user.passwordSetupRequired !== true) {
-    throw new AppError("Doctor account setup is already complete", 409);
+  const temporaryPassword = generateTemporaryPassword();
+  const password = await bcrypt.hash(temporaryPassword, 10);
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      user.password = password;
+      user.passwordSetupRequired = false;
+      user.requiresPasswordChange = true;
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+      await user.save({ session });
+      await sendTemporaryPasswordEmail({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: "doctor",
+        temporaryPassword,
+      });
+    });
+  } finally {
+    await session.endSession();
   }
-
-  await sendDoctorInvitation(user);
-  return { message: "Account setup invitation sent successfully." };
+  return { message: "A new temporary password was emailed successfully." };
 };
 
 module.exports = { listDoctors, getDoctor, getMyDoctor, updateMyProfileImage, createDoctor, updateDoctor, deleteDoctor, resendInvitation };

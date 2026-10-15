@@ -46,14 +46,6 @@ const validateDoctor = (req, res, next) => {
     return res.status(400).json({ message: "Invalid doctor status" });
   }
 
-  if (req.method === "POST") {
-    const temporaryPassword = typeof body.temporaryPassword === "string" ? body.temporaryPassword : "";
-    if (temporaryPassword.length < 8 || temporaryPassword.length > 16) {
-      return res.status(400).json({ message: "Temporary password must be 8 to 16 characters" });
-    }
-    doctor.temporaryPassword = temporaryPassword;
-  }
-
   req.validatedDoctor = doctor;
   next();
 };

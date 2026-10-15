@@ -1,4 +1,5 @@
 const service = require("../services/consultationService");
+const notifications = require("../services/notificationService");
 
 const listConsultations = async (req, res, next) => {
   try {
@@ -52,6 +53,16 @@ const completeConsultation = async (req, res, next) => {
       req.user,
       req.validatedConsultationDraft,
       req
+    );
+    await notifications.publishSafely(() =>
+      notifications.notifyPatient(data.patientId?._id || data.patientId, {
+        type: "consultation_completed",
+        title: "Consultation Completed",
+        message: "Your consultation is complete and your Visit Summary is available.",
+        targetType: "patient_medical_history",
+        targetId: data._id,
+        dedupeKey: `consultation:${data._id}:completed`,
+      })
     );
     res.json({ message: "Consultation completed.", data });
   } catch (error) {

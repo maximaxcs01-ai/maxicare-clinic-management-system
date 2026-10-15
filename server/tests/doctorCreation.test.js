@@ -13,6 +13,7 @@ const { validateDoctor } = require("../validators/doctorValidator");
 const serviceId = "650000000000000000000001";
 const doctorId = "650000000000000000000002";
 const userId = "650000000000000000000003";
+const envKeys = ["JWT_SECRET", "BREVO_API_KEY", "BREVO_SENDER_EMAIL", "BREVO_SENDER_NAME"];
 const original = {
   startSession: mongoose.startSession,
   serviceCountDocuments: Service.countDocuments,
@@ -21,24 +22,19 @@ const original = {
   doctorCreate: Doctor.create,
   doctorFindById: Doctor.findById,
   counterFindByIdAndUpdate: Counter.findByIdAndUpdate,
-  jwtSecret: process.env.JWT_SECRET,
+  fetch: global.fetch,
+  env: Object.fromEntries(envKeys.map((key) => [key, process.env[key]])),
 };
 
 let storedUser;
 let createdDoctorInput;
-let createdUserCount;
-let doctorResult;
+let deliveredEmail;
 
-const validForm = (temporaryPassword) => ({
-  firstName: "Test",
-  lastName: "Doctor",
-  email: "doctor@example.test",
-  mobileNumber: "09170000000",
-  licenseNumber: "LIC-12345",
-  specialization: "General Practice",
-  serviceIds: [serviceId],
-  status: "active",
-  ...(temporaryPassword === undefined ? {} : { temporaryPassword }),
+const validForm = (extra = {}) => ({
+  firstName: "Test", lastName: "Doctor", email: "doctor@example.test",
+  mobileNumber: "09170000000", licenseNumber: "LIC-12345",
+  specialization: "General Practice", serviceIds: [serviceId], status: "active",
+  ...extra,
 });
 
 const runValidation = (body) => {
@@ -46,60 +42,39 @@ const runValidation = (body) => {
   let nextCalled = false;
   const req = { method: "POST", body };
   const res = {
-    status(statusCode) {
-      response = { statusCode };
-      return this;
-    },
-    json(payload) {
-      response = { ...response, ...payload };
-      return this;
-    },
+    status(statusCode) { response = { statusCode }; return this; },
+    json(payload) { response = { ...response, ...payload }; return this; },
   };
-  validateDoctor(req, res, () => {
-    nextCalled = true;
-  });
+  validateDoctor(req, res, () => { nextCalled = true; });
   return { req, response, nextCalled };
 };
 
 beforeEach(() => {
   process.env.JWT_SECRET = "test-jwt-secret";
+  process.env.BREVO_API_KEY = "test-api-key";
+  process.env.BREVO_SENDER_EMAIL = "sender@example.test";
+  process.env.BREVO_SENDER_NAME = "Test Clinic";
   storedUser = null;
   createdDoctorInput = null;
-  createdUserCount = 0;
-  doctorResult = {
-    _id: doctorId,
-    firstName: "Test",
-    lastName: "Doctor",
-    email: "doctor@example.test",
-    doctorNumber: "DR-000041",
-    userId: { _id: userId, passwordSetupRequired: false, status: "active" },
-    serviceIds: [{ _id: serviceId, name: "General Consultation", status: "active" }],
+  deliveredEmail = null;
+  global.fetch = async (_url, options) => {
+    deliveredEmail = JSON.parse(options.body);
+    return { ok: true };
   };
   mongoose.startSession = async () => ({
-    withTransaction: async (callback) => callback(),
-    endSession: async () => {},
+    withTransaction: async (callback) => callback(), endSession: async () => {},
   });
-  Service.countDocuments = () => ({
-    session: async () => 1,
-  });
-  User.create = async ([data]) => {
-    createdUserCount += 1;
-    storedUser = { ...data, _id: userId };
-    return [storedUser];
-  };
-  User.findOne = () => ({
-    select: async () => storedUser,
-  });
-  Doctor.create = async ([data]) => {
-    createdDoctorInput = data;
-    return [{ ...doctorResult, ...data, _id: doctorId }];
-  };
+  Service.countDocuments = () => ({ session: async () => 1 });
+  User.create = async ([data]) => { storedUser = { ...data, _id: userId }; return [storedUser]; };
+  User.findOne = () => ({ select: async () => storedUser });
+  Doctor.create = async ([data]) => { createdDoctorInput = data; return [{ ...data, _id: doctorId }]; };
   Doctor.findById = () => ({
-    populate() {
-      return this;
-    },
+    populate() { return this; },
     then(resolve, reject) {
-      return Promise.resolve(doctorResult).then(resolve, reject);
+      return Promise.resolve({
+        ...createdDoctorInput, _id: doctorId, doctorNumber: "DR-000041",
+        userId: { _id: userId, requiresPasswordChange: true, status: "active" },
+      }).then(resolve, reject);
     },
   });
   Counter.findByIdAndUpdate = async () => ({ sequence: 41 });
@@ -113,88 +88,53 @@ afterEach(() => {
   Doctor.create = original.doctorCreate;
   Doctor.findById = original.doctorFindById;
   Counter.findByIdAndUpdate = original.counterFindByIdAndUpdate;
-  if (original.jwtSecret === undefined) {
-    delete process.env.JWT_SECRET;
-  } else {
-    process.env.JWT_SECRET = original.jwtSecret;
+  global.fetch = original.fetch;
+  for (const [key, value] of Object.entries(original.env)) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
   }
 });
 
-test("doctor create validator requires an 8–16 character temporary password", () => {
-  for (const password of [undefined, "", "1234567", "12345678901234567"]) {
-    const result = runValidation(validForm(password));
-    assert.equal(result.nextCalled, false);
-    assert.equal(result.response.statusCode, 400);
-    assert.match(result.response.message, /Temporary password must be 8 to 16 characters/);
-  }
-
-  for (const password of ["12345678", "1234567890123456"]) {
-    const result = runValidation(validForm(password));
-    assert.equal(result.nextCalled, true);
-    assert.equal(result.req.validatedDoctor.temporaryPassword, password);
-  }
+test("doctor create ignores an administrator-supplied temporary password", () => {
+  const result = runValidation(validForm({ temporaryPassword: "AdminChosen8" }));
+  assert.equal(result.nextCalled, true);
+  assert.equal("temporaryPassword" in result.req.validatedDoctor, false);
 });
 
-test("doctor is created with a hashed temporary password and can log in normally", async () => {
-  const temporaryPassword = "TempPass8";
-  const validation = runValidation(validForm(temporaryPassword));
-  assert.equal(validation.nextCalled, true);
-
+test("doctor receives an emailed server-generated password and restricted login", async () => {
+  const validation = runValidation(validForm());
   const result = await createDoctor(validation.req.validatedDoctor, { _id: "actor" });
-
-  assert.equal(createdUserCount, 1);
   assert.equal(storedUser.passwordSetupRequired, false);
+  assert.equal(storedUser.requiresPasswordChange, true);
   assert.equal(storedUser.emailVerified, true);
-  assert.notEqual(storedUser.password, temporaryPassword);
+  assert.match(storedUser.password, /^\$2[aby]\$/);
+  assert.equal(deliveredEmail.to[0].email, "doctor@example.test");
+  const encodedPassword = deliveredEmail.htmlContent.match(/letter-spacing:1px\">([^<]+)</)[1];
+  const temporaryPassword = encodedPassword
+    .replaceAll("&amp;", "&").replaceAll("&#039;", "'")
+    .replaceAll("&quot;", '"').replaceAll("&lt;", "<").replaceAll("&gt;", ">");
   assert.equal(await bcrypt.compare(temporaryPassword, storedUser.password), true);
   assert.equal("temporaryPassword" in createdDoctorInput, false);
-  assert.equal("temporaryPassword" in result.doctor, false);
   assert.equal("password" in result.doctor, false);
-  assert.equal(result.doctor.doctorNumber, "DR-000041");
 
   let statusCode;
   let responseBody;
-  const response = {
-    status(code) {
-      statusCode = code;
-      return this;
-    },
-    json(body) {
-      responseBody = body;
-      return this;
-    },
-  };
-
   await authController.loginUser(
+    { body: { email: storedUser.email, password: temporaryPassword } },
     {
-      body: {
-        email: "doctor@example.test",
-        password: temporaryPassword,
-      },
+      status(code) { statusCode = code; return this; },
+      json(body) { responseBody = body; return this; },
     },
-    response,
-    (error) => {
-      throw error;
-    }
+    (error) => { throw error; }
   );
-
   assert.equal(statusCode, 200);
-  assert.equal(responseBody.user.role, "doctor");
-  assert.ok(responseBody.token);
+  assert.equal(responseBody.mustChangePassword, true);
+  assert.equal(responseBody.user.mustChangePassword, true);
 });
 
 test("duplicate doctor email remains rejected by the unique user constraint", async () => {
-  User.create = async () => {
-    const error = new Error("duplicate email");
-    error.code = 11000;
-    throw error;
-  };
-
+  User.create = async () => { const error = new Error("duplicate email"); error.code = 11000; throw error; };
   await assert.rejects(
-    createDoctor(
-      runValidation(validForm("TempPass8")).req.validatedDoctor,
-      { _id: "actor" }
-    ),
+    createDoctor(runValidation(validForm()).req.validatedDoctor, { _id: "actor" }),
     (error) => error.code === 11000
   );
 });

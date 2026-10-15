@@ -3,6 +3,7 @@ import AddIcon from '@mui/icons-material/Add'
 import EventRepeatOutlinedIcon from '@mui/icons-material/EventRepeatOutlined'
 import HighlightOffOutlinedIcon from '@mui/icons-material/HighlightOffOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import {
   Alert,
@@ -31,7 +32,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
-import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import StatusChip from '../components/common/StatusChip'
 import TableState from '../components/common/TableState'
 import {
@@ -86,6 +87,7 @@ const formatSlotTime = (timeStr) =>
 
 function PatientAppointments() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [bucket, setBucket] = useState('upcoming')
   const [page, setPage] = useState(1)
   const [appointments, setAppointments] = useState([])
@@ -449,6 +451,22 @@ function PatientAppointments() {
                           >
                             View
                           </Button>
+                          {appointment.status === 'completed' &&
+                            appointment.consultationId && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<AssignmentOutlinedIcon />}
+                                onClick={() =>
+                                  navigate(
+                                    `/patient/medical-history/${appointment.consultationId}`,
+                                  )
+                                }
+                                sx={{ textTransform: 'none', fontWeight: 600 }}
+                              >
+                                View Visit Summary
+                              </Button>
+                            )}
                           {canAct && (
                             <>
                             <Tooltip
@@ -698,7 +716,7 @@ function PatientAppointments() {
             onClick={handleConfirmCancel}
             disabled={cancelModal.loading}
           >
-            {cancelModal.loading ? 'Cancelling...' : 'Confirm Cancellation'}
+            {cancelModal.loading ? 'Cancelling...' : 'Cancel Appointment'}
           </Button>
         </DialogActions>
       </Dialog>

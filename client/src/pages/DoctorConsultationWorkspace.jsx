@@ -66,12 +66,17 @@ function DoctorConsultationWorkspace() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [completionError, setCompletionError] = useState('')
+  const [noPrescriptionConfirmOpen, setNoPrescriptionConfirmOpen] = useState(false)
+  const [prescriptionDecisionError, setPrescriptionDecisionError] = useState('')
   const [prescriptionLoading, setPrescriptionLoading] = useState(false)
   const [prescription, setPrescription] = useState(null)
   const [prescriptionAction, setPrescriptionAction] = useState(false)
   const [issueDialogOpen, setIssueDialogOpen] = useState(false)
   const prescriptionActionRef = useRef(false)
   const issueRequestRef = useRef(false)
+  const completionActionRef = useRef(false)
+  const noPrescriptionActionRef = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -155,8 +160,11 @@ function DoctorConsultationWorkspace() {
   }
 
   const handleComplete = async () => {
+    if (completionActionRef.current || saving) return
+    completionActionRef.current = true
     setSaving(true)
     setError('')
+    setCompletionError('')
     try {
       const response = await completeConsultation(
         id,
@@ -165,15 +173,19 @@ function DoctorConsultationWorkspace() {
       setConsultation(response.data.data)
       setDraft(consultationToDraft(response.data.data))
       setConfirmOpen(false)
-      setNotice({ severity: 'success', message: response.data.message })
+      setNotice({
+        severity: 'success',
+        message: 'Consultation completed successfully.',
+      })
     } catch (requestError) {
-      setConfirmOpen(false)
-      setError(
+      const message =
         requestError.response?.data?.message ||
-          'Unable to complete the consultation.',
-      )
+        'Unable to complete the consultation.'
+      setError(message)
+      setCompletionError(message)
     } finally {
       setSaving(false)
+      completionActionRef.current = false
     }
   }
 
@@ -240,19 +252,28 @@ function DoctorConsultationWorkspace() {
   }
 
   const handleNoPrescriptionNeeded = async () => {
+    if (noPrescriptionActionRef.current || saving || prescriptionLoading) return
+    noPrescriptionActionRef.current = true
     try {
       setPrescriptionLoading(true)
       setError('')
+      setPrescriptionDecisionError('')
       const response = await markNoPrescriptionNeeded(id)
       setConsultation(response.data.data)
-      setNotice({ severity: 'success', message: response.data.message })
+      setNoPrescriptionConfirmOpen(false)
+      setNotice({
+        severity: 'success',
+        message: 'No prescription needed decision saved.',
+      })
     } catch (requestError) {
-      setError(
+      const message =
         requestError.response?.data?.message ||
-          'Unable to save the prescription decision.',
-      )
+        'Unable to save the prescription decision.'
+      setError(message)
+      setPrescriptionDecisionError(message)
     } finally {
       setPrescriptionLoading(false)
+      noPrescriptionActionRef.current = false
     }
   }
 
@@ -584,7 +605,10 @@ function DoctorConsultationWorkspace() {
                 </Button>
                 <Button
                   disabled={prescriptionAction || saving || prescriptionLoading}
-                  onClick={handleNoPrescriptionNeeded}
+                  onClick={() => {
+                    setPrescriptionDecisionError('')
+                    setNoPrescriptionConfirmOpen(true)
+                  }}
                 >
                   No Prescription Needed
                 </Button>
@@ -647,12 +671,31 @@ function DoctorConsultationWorkspace() {
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Complete consultation?"
-        message="This will mark the consultation and appointment completed. The record will become read-only."
-        confirmLabel="Complete"
+        title="Complete Consultation?"
+        message="Are you sure you want to complete this consultation? Once completed, the finalized clinical record can no longer be edited."
+        confirmLabel="Complete Consultation"
+        cancelLabel="Cancel"
+        error={completionError}
         loading={saving}
-        onCancel={() => setConfirmOpen(false)}
+        onCancel={() => {
+          setConfirmOpen(false)
+          setCompletionError('')
+        }}
         onConfirm={handleComplete}
+      />
+
+      <ConfirmDialog
+        open={noPrescriptionConfirmOpen}
+        title="No Prescription Needed?"
+        message="Confirm that this consultation does not require a prescription."
+        confirmLabel="Confirm"
+        error={prescriptionDecisionError}
+        loading={prescriptionLoading}
+        onCancel={() => {
+          setNoPrescriptionConfirmOpen(false)
+          setPrescriptionDecisionError('')
+        }}
+        onConfirm={handleNoPrescriptionNeeded}
       />
 
       <Snackbar

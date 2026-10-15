@@ -33,6 +33,7 @@ import useAuth from '../hooks/useAuth'
 import { getRoleDestination } from '../utils/authRoutes'
 import BrandMark from './BrandMark'
 import ProfileAvatar from './ProfileAvatar'
+import NotificationBell from './NotificationBell'
 
 const defaultDrawerWidth = 272
 const patientDrawerWidth = 224
@@ -271,6 +272,8 @@ function AuthenticatedLayout() {
             {navigation.find((item) => isItemActive(item.path))?.label ||
               'Maxicare Clinic'}
           </Typography>
+
+          <NotificationBell role={user?.role} />
 
           <Tooltip title="Open account menu">
             <IconButton

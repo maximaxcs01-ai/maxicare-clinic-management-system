@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const { afterEach, beforeEach, test } = require("node:test");
@@ -9,6 +10,7 @@ const User = require("../models/User");
 const authService = require("../services/authService");
 const { hashOtp } = require("../services/otpService");
 const { validateRegistration } = require("../validators/authValidator");
+const { CURRENT_TERMS_VERSION } = require("../config/terms");
 
 const loadAuthController = () => {
   const controllerPath = require.resolve("../controllers/authController");
@@ -69,6 +71,9 @@ beforeEach(() => {
     otpHash: hashOtp("patient@example.test", "123456"),
     otpAttempts: 0,
     otpExpiresAt: new Date(Date.now() + 60_000),
+    termsAcceptedAt: new Date("2026-10-16T01:00:00.000Z"),
+    privacyAcceptedAt: new Date("2026-10-16T01:00:00.000Z"),
+    termsVersion: CURRENT_TERMS_VERSION,
   };
   createdUserInput = null;
   createdPatientInput = null;
@@ -185,6 +190,15 @@ test("valid OTP creates the linked Patient and removes PendingRegistration", asy
   assert.equal(createdUserInput.emailVerified, true);
   assert.equal(createdUserInput.role, "patient");
   assert.equal(createdUserInput.password, "bcrypt-hash");
+  assert.equal(createdUserInput.termsVersion, CURRENT_TERMS_VERSION);
+  assert.equal(
+    createdUserInput.termsAcceptedAt.toISOString(),
+    "2026-10-16T01:00:00.000Z"
+  );
+  assert.equal(
+    createdUserInput.privacyAcceptedAt.toISOString(),
+    "2026-10-16T01:00:00.000Z"
+  );
   assert.equal(createdPatientInput.userId, verificationResult._id);
   assert.equal(createdPatientInput.patientNumber, "PT-000023");
   assert.equal(pendingDeleteCount, 1);
@@ -278,6 +292,9 @@ test("registration password policy is exactly 8 to 16 characters", () => {
         mobileNumber: "09170000000",
         password,
         confirmPassword: password,
+        termsAccepted: true,
+        privacyAccepted: true,
+        termsVersion: CURRENT_TERMS_VERSION,
       },
     };
     let statusCode;
@@ -302,4 +319,119 @@ test("registration password policy is exactly 8 to 16 characters", () => {
   assert.equal(validate("12345678").nextCalled, true);
   assert.equal(validate("1234567890123456").nextCalled, true);
   assert.equal(validate("12345678901234567").statusCode, 400);
+});
+
+test("registration requires explicit acceptance of the current policies", () => {
+  const validBody = {
+    firstName: "Test",
+    middleName: "",
+    lastName: "Patient",
+    email: "patient@example.test",
+    mobileNumber: "09170000000",
+    password: "12345678",
+    confirmPassword: "12345678",
+    termsAccepted: true,
+    privacyAccepted: true,
+    termsVersion: CURRENT_TERMS_VERSION,
+  };
+  const run = (overrides = {}) => {
+    const req = { body: { ...validBody, ...overrides } };
+    let response;
+    let nextCalled = false;
+    validateRegistration(
+      req,
+      {
+        status(status) {
+          response = { status };
+          return this;
+        },
+        json(body) {
+          response.body = body;
+        },
+      },
+      () => {
+        nextCalled = true;
+      }
+    );
+    return { req, response, nextCalled };
+  };
+
+  assert.equal(run({ termsAccepted: false }).response.status, 400);
+  assert.equal(run({ privacyAccepted: false }).response.status, 400);
+  assert.equal(
+    run({
+      termsAccepted: undefined,
+      privacyAccepted: undefined,
+      termsVersion: undefined,
+    }).response.status,
+    400
+  );
+  assert.equal(run({ termsVersion: "outdated" }).response.status, 400);
+  assert.equal(run({ termsAccepted: "true" }).response.status, 400);
+  assert.equal(run({ privacyAccepted: undefined }).response.status, 400);
+  const accepted = run();
+  assert.equal(accepted.nextCalled, true);
+  assert.equal(accepted.req.validatedAuth.termsVersion, CURRENT_TERMS_VERSION);
+  assert.equal("termsAcceptedAt" in accepted.req.validatedAuth, false);
+  assert.equal("privacyAcceptedAt" in accepted.req.validatedAuth, false);
+});
+
+test("legacy pending registration without consent metadata can still finish OTP verification", async () => {
+  delete pendingRecord.termsAcceptedAt;
+  delete pendingRecord.privacyAcceptedAt;
+  delete pendingRecord.termsVersion;
+
+  await authService.verifyPendingPatient({
+    email: "patient@example.test",
+    otp: "123456",
+  });
+
+  assert.equal("termsAcceptedAt" in createdUserInput, false);
+  assert.equal("privacyAcceptedAt" in createdUserInput, false);
+  assert.equal("termsVersion" in createdUserInput, false);
+});
+
+test("existing User without consent metadata still receives a normal login session", async () => {
+  const password = "Existing-Password-1";
+  const existingUser = {
+    _id: "existing-user-1",
+    firstName: "Existing",
+    middleName: "",
+    lastName: "Patient",
+    email: "existing@example.test",
+    password: await bcrypt.hash(password, 4),
+    role: "patient",
+    status: "active",
+    emailVerified: true,
+    passwordSetupRequired: false,
+    requiresPasswordChange: false,
+    tokenVersion: 0,
+  };
+  User.findOne = () => query(existingUser);
+  const { loginUser } = loadAuthController();
+  let statusCode;
+  let responseBody;
+  let nextError;
+
+  await loginUser(
+    { body: { email: existingUser.email, password } },
+    {
+      status(code) {
+        statusCode = code;
+        return this;
+      },
+      json(body) {
+        responseBody = body;
+      },
+    },
+    (error) => {
+      nextError = error;
+    }
+  );
+
+  assert.equal(nextError, undefined);
+  assert.equal(statusCode, 200);
+  assert.equal(responseBody.message, "Login successful");
+  assert.equal(responseBody.user.email, existingUser.email);
+  assert.equal(responseBody.mustChangePassword, false);
 });

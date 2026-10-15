@@ -85,6 +85,21 @@ test("operational queue includes in-consultation patients without queue position
 
 test("doctor queue remains scoped to active waiting and called entries", async () => {
   const doctorId = "620000000000000000000001";
+  const entries = [
+    {
+      _id: "queue-own-waiting",
+      doctorId: { _id: doctorId },
+      queueStatus: "waiting",
+      appointmentId: {
+        triage: {
+          vitals: { systolic: 120, diastolic: 80 },
+          recordedBy: { firstName: "Clinic", lastName: "Nurse" },
+          recordedAt: new Date("2026-10-16T01:00:00Z"),
+        },
+      },
+      toObject() { return this; },
+    },
+  ];
   let filter;
   Doctor.findOne = () => ({
     select() {
@@ -102,12 +117,12 @@ test("doctor queue remains scoped to active waiting and called entries", async (
         return this;
       },
       then(resolve, reject) {
-        return Promise.resolve([]).then(resolve, reject);
+        return Promise.resolve(entries).then(resolve, reject);
       },
     };
   };
 
-  await queueService.listTodayQueue({
+  const result = await queueService.listTodayQueue({
     _id: "doctor-user",
     role: "doctor",
   });
@@ -115,4 +130,8 @@ test("doctor queue remains scoped to active waiting and called entries", async (
   assert.equal(filter.active, true);
   assert.deepEqual(filter.queueStatus, { $in: ["waiting", "called"] });
   assert.equal(filter.$or, undefined);
+  assert.equal(result.data.length, 1);
+  assert.equal(result.data[0].queueStatus, "waiting");
+  assert.equal(result.data[0].appointmentId.triage.vitals.systolic, 120);
+  assert.equal(result.data[0].appointmentId.triage.recordedBy.lastName, "Nurse");
 });

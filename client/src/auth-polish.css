@@ -936,6 +936,64 @@
   grid-column: 1 / -1;
 }
 
+.auth-policy-links {
+  margin: 13px 0 0;
+  color: #758795;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auth-policy-links button,
+.registration-consent > button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: #1769aa;
+  background: transparent;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.auth-policy-links button:hover,
+.registration-consent > button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.registration-consent {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 10px;
+  color: #5d7283;
+  font-size: 0.78rem;
+}
+
+.registration-consent label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.registration-consent input {
+  width: 16px !important;
+  height: 16px !important;
+  min-height: 0 !important;
+  margin: 0;
+  padding: 0 !important;
+  accent-color: #1769aa;
+}
+
+.registration-consent p {
+  width: 100%;
+  margin: 1px 0 0;
+  color: #a33b3b;
+}
+
 .register-form-grid .auth-field {
   min-width: 0;
 }

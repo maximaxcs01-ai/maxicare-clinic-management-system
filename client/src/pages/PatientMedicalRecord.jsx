@@ -1,4 +1,6 @@
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined'
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import {
   Alert,
   Box,
@@ -20,6 +22,22 @@ const formatDateTime = (value) =>
     timeStyle: 'short',
     timeZone: 'Asia/Manila',
   }).format(new Date(value))
+
+const formatPatientName = (patient) =>
+  [patient?.firstName, patient?.middleName, patient?.lastName, patient?.suffix]
+    .filter(Boolean)
+    .join(' ')
+
+const vitalLabels = {
+  systolic: 'Systolic blood pressure',
+  diastolic: 'Diastolic blood pressure',
+  temperature: 'Temperature (°C)',
+  pulse: 'Pulse (bpm)',
+  respiratoryRate: 'Respiratory rate',
+  oxygenSaturation: 'Oxygen saturation (%)',
+  weight: 'Weight (kg)',
+  height: 'Height (cm)',
+}
 
 function PatientMedicalRecord() {
   const { consultationId } = useParams()
@@ -85,7 +103,7 @@ function PatientMedicalRecord() {
     )
   }
 
-  const { consultation, prescription } = currentRecord
+  const { patient, consultation, prescription } = currentRecord
   const details = [
     ['Chief complaint', consultation.chiefComplaint],
     ['Symptoms', consultation.symptoms],
@@ -98,7 +116,7 @@ function PatientMedicalRecord() {
   )
 
   return (
-    <Box component="section" className="patient-page patient-record-page" sx={{ width: '100%', minWidth: 0 }}>
+    <Box component="section" className="patient-page patient-record-page visit-summary" sx={{ width: '100%', minWidth: 0 }}>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
@@ -107,14 +125,30 @@ function PatientMedicalRecord() {
         sx={{ mb: 3 }}
       >
         <Box>
-          <Typography variant="h4">Consultation Record</Typography>
-          <Typography color="text.secondary">
-            Completed {formatDateTime(consultation.completedAt)}
+          <Typography variant="overline" color="primary" fontWeight={700}>
+            Maxicare Clinic
+          </Typography>
+          <Typography variant="h4">Visit Summary</Typography>
+          <Stack direction="row" alignItems="center" spacing={0.75} color="success.main">
+            <CheckCircleOutlinedIcon fontSize="small" />
+            <Typography fontWeight={700}>Consultation Completed</Typography>
+          </Stack>
+          <Typography color="text.secondary" variant="body2">
+            Completed on {formatDateTime(consultation.completedAt)}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <StatusChip status="completed" />
           <Button
+            className="visit-summary-print"
+            variant="outlined"
+            startIcon={<PrintOutlinedIcon />}
+            onClick={() => window.print()}
+          >
+            Print Summary
+          </Button>
+          <Button
+            className="visit-summary-back"
             startIcon={<ArrowBackOutlinedIcon />}
             onClick={() => navigate('/patient/medical-history')}
           >
@@ -124,6 +158,21 @@ function PatientMedicalRecord() {
       </Stack>
 
       <Stack spacing={2.5}>
+        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Patient
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
+          <Stack spacing={1}>
+            <Typography>
+              <strong>Name:</strong> {formatPatientName(patient) || '—'}
+            </Typography>
+            <Typography>
+              <strong>Patient number:</strong> {patient?.patientNumber || '—'}
+            </Typography>
+          </Stack>
+        </Paper>
+
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Visit
@@ -138,6 +187,16 @@ function PatientMedicalRecord() {
               {consultation.doctorId
                 ? `Dr. ${consultation.doctorId.firstName} ${consultation.doctorId.lastName}`
                 : '—'}
+            </Typography>
+            {consultation.doctorId?.specialization && (
+              <Typography>
+                <strong>Specialization:</strong>{' '}
+                {consultation.doctorId.specialization}
+              </Typography>
+            )}
+            <Typography>
+              <strong>Visit date:</strong>{' '}
+              {formatDateTime(consultation.appointmentId?.startAt || consultation.completedAt)}
             </Typography>
             <Typography>
               <strong>Appointment type:</strong>{' '}
@@ -165,12 +224,12 @@ function PatientMedicalRecord() {
             {vitals.length > 0 && (
               <Box>
                 <Typography fontWeight={700} sx={{ mb: 1 }}>
-                  Vitals
+                  Triage vitals
                 </Typography>
                 <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2}>
                   {vitals.map(([key, value]) => (
                     <Typography key={key}>
-                      <strong>{key.replaceAll(/([A-Z])/g, ' $1')}:</strong>{' '}
+                      <strong>{vitalLabels[key] || key}:</strong>{' '}
                       {value}
                     </Typography>
                   ))}
@@ -230,6 +289,15 @@ function PatientMedicalRecord() {
                   </Box>
                 )}
             </Stack>
+          </Paper>
+        )}
+        {!prescription && consultation.prescriptionDecision === 'none_required' && (
+          <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Prescription
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Alert severity="info">No prescription was needed for this visit.</Alert>
           </Paper>
         )}
       </Stack>

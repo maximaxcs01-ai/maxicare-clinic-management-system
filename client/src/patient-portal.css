@@ -478,6 +478,37 @@
   box-shadow: 0 3px 14px rgba(17, 52, 78, 0.045);
 }
 
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .visit-summary,
+  .visit-summary * {
+    visibility: visible;
+  }
+
+  .visit-summary {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 18px;
+    background: #fff;
+  }
+
+  .visit-summary-print,
+  .visit-summary-back,
+  .MuiDrawer-root,
+  .MuiAppBar-root {
+    display: none !important;
+  }
+
+  .visit-summary .MuiPaper-root {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+}
+
 .patient-appointments-page .MuiTableHead-root,
 .patient-history-page .MuiTableHead-root {
   background: #f7fafc;

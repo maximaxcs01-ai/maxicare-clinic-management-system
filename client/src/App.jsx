@@ -1,6 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import AuthenticatedLayout from './components/AuthenticatedLayout'
-import ModulePlaceholder from './components/common/ModulePlaceholder'
 import ProtectedRoute from './components/ProtectedRoute'
 import RoleRoute from './components/RoleRoute'
 import AuthProvider from './context/AuthProvider'
@@ -19,7 +18,9 @@ import Profile from './pages/Profile'
 import Register from './pages/Register'
 import ResetPassword from './pages/ResetPassword'
 import RoleDashboard from './pages/RoleDashboard'
+import AccountSettings from './pages/AccountSettings'
 import SetupAccount from './pages/SetupAccount'
+import SetupPassword from './pages/SetupPassword'
 import VerifyEmail from './pages/VerifyEmail'
 import VerifyResetOtp from './pages/VerifyResetOtp'
 import DoctorsManagement from './pages/admin/DoctorsManagement'
@@ -56,7 +57,7 @@ function DefaultRoute() {
 
   return (
     <Navigate
-      to={token ? getRoleDestination(user?.role) : '/login'}
+      to={token ? (user?.mustChangePassword === true ? '/setup-password' : getRoleDestination(user?.role)) : '/login'}
       replace
     />
   )
@@ -83,10 +84,6 @@ function LegacyPatientRoute({ action }) {
   return <Navigate to={roleHome} replace />
 }
 
-const placeholder = (title, description) => (
-  <ModulePlaceholder title={title} description={description} />
-)
-
 function AppRoutes() {
   return (
     <Routes>
@@ -98,6 +95,14 @@ function AppRoutes() {
       <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/setup-account" element={<SetupAccount />} />
+      <Route
+        path="/setup-password"
+        element={
+          <ProtectedRoute allowPasswordSetup>
+            <SetupPassword />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         element={
@@ -129,10 +134,7 @@ function AppRoutes() {
             element={<PatientPrescriptions />}
           />
           <Route path="/patient/profile" element={<Profile />} />
-          <Route
-            path="/patient/account-settings"
-            element={placeholder('Account Settings')}
-          />
+          <Route path="/patient/account-settings" element={<AccountSettings />} />
         </Route>
 
         <Route element={<RoleRoute allowedRoles={['receptionist']} />}>
@@ -158,10 +160,7 @@ function AppRoutes() {
             element={<DoctorSchedulePage readOnly />}
           />
           <Route path="/receptionist/profile" element={<Profile />} />
-          <Route
-            path="/receptionist/account-settings"
-            element={placeholder('Account Settings')}
-          />
+          <Route path="/receptionist/account-settings" element={<AccountSettings />} />
         </Route>
 
         <Route element={<RoleRoute allowedRoles={['doctor']} />}>
@@ -194,10 +193,7 @@ function AppRoutes() {
             element={<DoctorPrescriptionWorkspace />}
           />
           <Route path="/doctor/profile" element={<Profile />} />
-          <Route
-            path="/doctor/account-settings"
-            element={placeholder('Account Settings')}
-          />
+          <Route path="/doctor/account-settings" element={<AccountSettings />} />
         </Route>
 
         <Route element={<RoleRoute allowedRoles={['admin']} />}>
@@ -221,10 +217,7 @@ function AppRoutes() {
           <Route path="/admin/reports" element={<Reports />} />
           <Route path="/admin/audit-logs" element={<AuditLogs />} />
           <Route path="/admin/profile" element={<Profile />} />
-          <Route
-            path="/admin/account-settings"
-            element={placeholder('Account Settings')}
-          />
+          <Route path="/admin/account-settings" element={<AccountSettings />} />
         </Route>
 
         <Route path="/dashboard" element={<DefaultRoute />} />

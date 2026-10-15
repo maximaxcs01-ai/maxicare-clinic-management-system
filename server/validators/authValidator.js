@@ -1,6 +1,7 @@
 const namePattern = /^[\p{L}\s'-]+$/u;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const mobileNumberPattern = /^09\d{9}$/;
+const { CURRENT_TERMS_VERSION } = require("../config/terms");
 
 const cleanString = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -22,6 +23,19 @@ const validateRegistration = (req, res, next) => {
     });
   }
 
+  if (body.termsVersion !== CURRENT_TERMS_VERSION) {
+    return res.status(400).json({
+      message:
+        "The Terms of Service and Privacy Policy have been updated. Please review and accept the current version",
+    });
+  }
+
+  if (body.termsAccepted !== true || body.privacyAccepted !== true) {
+    return res.status(400).json({
+      message: "You must accept the current Terms of Service and Privacy Policy",
+    });
+  }
+
   const registration = {
     firstName: cleanString(body.firstName),
     middleName: cleanString(body.middleName),
@@ -31,6 +45,9 @@ const validateRegistration = (req, res, next) => {
     password: typeof body.password === "string" ? body.password : "",
     confirmPassword:
       typeof body.confirmPassword === "string" ? body.confirmPassword : "",
+    termsAccepted: true,
+    privacyAccepted: true,
+    termsVersion: CURRENT_TERMS_VERSION,
   };
 
   const validationError =
@@ -164,6 +181,59 @@ const validateAccountSetupPassword = (req, res, next) => {
   next();
 };
 
+const validateTemporaryPasswordChange = (req, res, next) => {
+  const newPassword =
+    typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  const confirmPassword =
+    typeof req.body?.confirmPassword === "string" ? req.body.confirmPassword : "";
+
+  if (newPassword.length < 8 || newPassword.length > 16) {
+    return res.status(400).json({ message: "Password must be 8 to 16 characters" });
+  }
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+
+  req.validatedAuth = { newPassword };
+  next();
+};
+
+const validateAuthenticatedPasswordChange = (req, res, next) => {
+  const currentPassword =
+    typeof req.body?.currentPassword === "string"
+      ? req.body.currentPassword
+      : "";
+  const newPassword =
+    typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  const confirmPassword =
+    typeof req.body?.confirmPassword === "string"
+      ? req.body.confirmPassword
+      : "";
+
+  if (!currentPassword || currentPassword.length > 128) {
+    return res.status(400).json({ message: "Current password is required." });
+  }
+  if (newPassword.length < 8 || newPassword.length > 16) {
+    return res.status(400).json({ message: "Password must be 8 to 16 characters" });
+  }
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+
+  req.validatedAuth = { currentPassword, newPassword };
+  next();
+};
+
+const validateNotificationPreference = (req, res, next) => {
+  if (typeof req.body?.inApp !== "boolean") {
+    return res.status(400).json({
+      message: "In-app notification preference must be true or false.",
+    });
+  }
+  req.validatedNotificationPreference = { inApp: req.body.inApp };
+  next();
+};
+
 module.exports = {
   validateRegistration,
   validateEmailOtp,
@@ -171,4 +241,7 @@ module.exports = {
   validateResetPassword,
   validateAccountSetupToken,
   validateAccountSetupPassword,
+  validateTemporaryPasswordChange,
+  validateAuthenticatedPasswordChange,
+  validateNotificationPreference,
 };

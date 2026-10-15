@@ -3,6 +3,7 @@ const { afterEach, beforeEach, test } = require("node:test");
 const PendingRegistration = require("../models/PendingRegistration");
 const User = require("../models/User");
 const { registerPendingPatient } = require("../services/authService");
+const { CURRENT_TERMS_VERSION } = require("../config/terms");
 
 const original = {
   apiKey: process.env.BREVO_API_KEY,
@@ -87,6 +88,9 @@ test("failed OTP delivery retains one pending registration for a safe retry", as
     email: "retry@example.test",
     mobileNumber: "09170000000",
     password: "Strong-Test-Password-1!",
+    termsVersion: CURRENT_TERMS_VERSION,
+    termsAcceptedAt: new Date("2000-01-01T00:00:00.000Z"),
+    privacyAcceptedAt: new Date("2000-01-01T00:00:00.000Z"),
   };
 
   await assert.rejects(
@@ -99,6 +103,20 @@ test("failed OTP delivery retains one pending registration for a safe retry", as
   assert.equal(pendingWrites[0].options.upsert, true);
   assert.ok(pendingWrites[0].update.$set.passwordHash);
   assert.ok(pendingWrites[0].update.$set.otpHash);
+  assert.equal(
+    pendingWrites[0].update.$set.termsVersion,
+    CURRENT_TERMS_VERSION
+  );
+  assert.ok(pendingWrites[0].update.$set.termsAcceptedAt instanceof Date);
+  assert.ok(pendingWrites[0].update.$set.privacyAcceptedAt instanceof Date);
+  assert.notEqual(
+    pendingWrites[0].update.$set.termsAcceptedAt.toISOString(),
+    registration.termsAcceptedAt.toISOString()
+  );
+  assert.notEqual(
+    pendingWrites[0].update.$set.privacyAcceptedAt.toISOString(),
+    registration.privacyAcceptedAt.toISOString()
+  );
   assert.equal("otp" in pendingWrites[0].update.$set, false);
   assert.equal(userCreateCount, 0);
 

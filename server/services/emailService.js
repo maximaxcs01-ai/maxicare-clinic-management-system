@@ -220,10 +220,34 @@ const sendPatientInvitationEmail = async ({ email, firstName, lastName, setupUrl
   });
 };
 
+const sendTemporaryPasswordEmail = async ({
+  email,
+  firstName,
+  lastName,
+  role,
+  temporaryPassword,
+}) => {
+  const displayName = `${firstName} ${lastName}`.trim() || firstName || "Staff member";
+  const safeName = escapeHtml(displayName);
+  const safeRole = escapeHtml(role);
+  const safePassword = escapeHtml(temporaryPassword);
+  const loginUrl = `${(process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",")[0].trim().replace(/\/$/, "")}/login`;
+  const safeLoginUrl = escapeHtml(loginUrl);
+
+  await sendEmail({
+    email,
+    name: displayName,
+    subject: "Your temporary Maxicare Clinic password",
+    htmlContent: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#102a43;line-height:1.6"><h2>Maxicare Clinic</h2><p>Hello ${safeName},</p><p>Your ${safeRole} account has been created.</p><p>Email: <strong>${escapeHtml(email)}</strong></p><p>Temporary password:</p><p style="font-size:20px;font-weight:700;letter-spacing:1px">${safePassword}</p><p>Sign in with this password. You will be required to create a new password before accessing the clinic system.</p><p><a href="${safeLoginUrl}" style="display:inline-block;padding:12px 20px;background:#0f766e;color:white;text-decoration:none;border-radius:6px;font-weight:700">Sign In</a></p><p>If you were not expecting this account, please contact the clinic administrator.</p></body></html>`,
+    errorMessage: "Unable to send temporary password email. The account was not created.",
+  });
+};
+
 module.exports = {
   getEmailConfiguration,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendDoctorInvitationEmail,
   sendPatientInvitationEmail,
+  sendTemporaryPasswordEmail,
 };

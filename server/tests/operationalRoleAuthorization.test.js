@@ -65,7 +65,6 @@ const assertAllowedForOperations = (guard, allowedRoles, deniedRoles) => {
 test("Admin and Receptionist can perform non-clinical queue operations", () => {
   for (const [path, method] of [
     ["/", "get"],
-    ["/doctors/:doctorId/call-next", "post"],
     ["/:id/return", "patch"],
     ["/:id/remove", "patch"],
   ]) {
@@ -75,6 +74,12 @@ test("Admin and Receptionist can perform non-clinical queue operations", () => {
       ["doctor", "patient"],
     );
   }
+
+  assertAllowedForOperations(
+    getRouteGuard(queueRoutes, "/doctors/:doctorId/call-next", "post"),
+    ["admin", "receptionist", "doctor"],
+    ["patient"],
+  );
 });
 
 test("Admin and Receptionist can use walk-in and patient registration endpoints", () => {

@@ -1,16 +1,12 @@
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
 import {
-  Alert,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Stack,
   TextField,
 } from '@mui/material'
 import { useState } from 'react'
+import ConfirmDialog from './common/ConfirmDialog'
 import {
   cancelConsultation,
   deleteConsultation,
@@ -119,24 +115,27 @@ function ConsultationOperationalActions({
         )}
       </Stack>
 
-      <Dialog
+      <ConfirmDialog
         open={dialog.open}
-        onClose={closeDialog}
-        maxWidth="xs"
-        fullWidth
+        title={dialog.type === 'cancel'
+          ? 'Cancel Consultation?'
+          : 'Delete Consultation?'}
+        message={dialog.type === 'cancel'
+          ? 'This will stop the current consultation and return the patient to the waiting queue.'
+          : 'This permanently deletes this eligible consultation record. This action cannot be undone.'}
+        confirmLabel={dialog.type === 'cancel'
+          ? 'Cancel Consultation'
+          : 'Delete Consultation'}
+        cancelLabel={dialog.type === 'cancel' ? 'Keep Consultation' : 'Cancel'}
+        severity={dialog.type === 'cancel' ? 'warning' : 'error'}
+        error={dialog.error}
+        loading={dialog.loading}
+        confirmDisabled={!dialog.reason.trim()}
+        onCancel={closeDialog}
+        onConfirm={submit}
+        maxWidth="sm"
       >
-        <DialogTitle>
-          {dialog.type === 'cancel'
-            ? 'Cancel consultation?'
-            : 'Delete consultation?'}
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <Alert severity={dialog.type === 'cancel' ? 'warning' : 'error'}>
-              {dialog.type === 'cancel'
-                ? 'This will stop the current consultation and return the patient to the waiting queue.'
-                : 'This permanently removes this eligible consultation record. The appointment and patient record will remain.'}
-            </Alert>
+        <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField
               label="Reason"
               required
@@ -157,27 +156,8 @@ function ConsultationOperationalActions({
               error={Boolean(dialog.error)}
               disabled={dialog.loading}
             />
-            {dialog.error && <Alert severity="error">{dialog.error}</Alert>}
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={closeDialog} disabled={dialog.loading}>
-            {dialog.type === 'cancel' ? 'Keep Consultation' : 'Cancel'}
-          </Button>
-          <Button
-            color={dialog.type === 'cancel' ? 'warning' : 'error'}
-            variant="contained"
-            onClick={submit}
-            disabled={dialog.loading || !dialog.reason.trim()}
-          >
-            {dialog.loading
-              ? 'Please wait...'
-              : dialog.type === 'cancel'
-                ? 'Cancel Consultation'
-                : 'Delete Consultation'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </ConfirmDialog>
     </>
   )
 }

@@ -217,6 +217,43 @@ test("patient history includes completed consultations and issued prescriptions 
   assert.equal(consultationPopulate[0].select.includes("privateNotes"), false);
 });
 
+test("patient history links visit summaries only to completed appointments", async () => {
+  const completedAppointment = {
+    _id: "660000000000000000000001",
+    patientId: ids.patient,
+    status: "completed",
+  };
+  const cancelledAppointment = {
+    _id: "660000000000000000000002",
+    patientId: ids.patient,
+    status: "cancelled",
+  };
+  Appointment.find = () =>
+    makeQuery(() => [completedAppointment, cancelledAppointment], projectedFields);
+  Consultation.find = (filter) => {
+    const isLinkLookup = Boolean(filter.appointmentId?.$in);
+    return makeQuery(
+      () =>
+        isLinkLookup
+          ? [
+              {
+                _id: ids.consultation,
+                appointmentId: completedAppointment._id,
+                patientId: ids.patient,
+                status: "completed",
+              },
+            ]
+          : [],
+      projectedFields
+    );
+  };
+
+  const result = await service.getPatientHistory(patientUser);
+
+  assert.equal(String(result.appointments[0].consultationId), ids.consultation);
+  assert.equal(result.appointments[1].consultationId, undefined);
+});
+
 test("patient consultation detail is resolved through the authenticated Patient", async () => {
   const result = await service.getOwnCompletedConsultation(
     ids.consultation,
@@ -229,6 +266,22 @@ test("patient consultation detail is resolved through the authenticated Patient"
     patientId: ids.patient,
     status: "completed",
   });
+  assert.ok(projectedFields.some((fields) => fields?.includes("prescriptionDecision")));
+  assert.equal(projectedFields.some((fields) => fields?.includes("privateNotes")), false);
+  const serialized = JSON.stringify(result);
+  for (const forbidden of [
+    "privateNotes",
+    "publicId",
+    "password",
+    "tokenVersion",
+    "createdBy",
+    "updatedBy",
+    "patientId",
+    "consultationId",
+    '"_id"',
+  ]) {
+    assert.equal(serialized.includes(forbidden), false);
+  }
 });
 
 test("patient cannot fetch another patient's consultation", async () => {

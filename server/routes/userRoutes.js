@@ -15,6 +15,7 @@ router.patch(
 router.use(protect, authorize("admin"));
 router.get("/", controller.listUsers);
 router.post("/", validateCreateUser, controller.createUser);
+router.post("/:id/reissue-temporary-password", controller.reissueTemporaryPassword);
 router.get("/:id", controller.getUser);
 router.put("/:id", validateUpdateUser, controller.updateUser);
 router.patch("/:id/status", validateStatus, controller.updateStatus);

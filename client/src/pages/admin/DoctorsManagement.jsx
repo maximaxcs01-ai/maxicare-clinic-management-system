@@ -2,8 +2,6 @@
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import {
   Alert,
   Box,
@@ -15,7 +13,6 @@ import {
   DialogTitle,
   FormControl,
   IconButton,
-  InputAdornment,
   InputLabel,
   ListItemText,
   MenuItem,
@@ -57,7 +54,6 @@ const emptyForm = {
   mobileNumber: '',
   licenseNumber: '',
   specialization: '',
-  temporaryPassword: '',
   serviceIds: [],
   status: 'active',
 }
@@ -76,8 +72,6 @@ function DoctorsManagement() {
   const [reload, setReload] = useState(0)
   const [dialog, setDialog] = useState(null)
   const [form, setForm] = useState(emptyForm)
-  const [showTemporaryPassword, setShowTemporaryPassword] = useState(false)
-  const [temporaryPasswordTouched, setTemporaryPasswordTouched] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirm, setConfirm] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -157,8 +151,6 @@ function DoctorsManagement() {
 
   const openForm = (doctor) => {
     setDialog(doctor || {})
-    setShowTemporaryPassword(false)
-    setTemporaryPasswordTouched(false)
     setForm(
       doctor
         ? {
@@ -169,7 +161,6 @@ function DoctorsManagement() {
             mobileNumber: doctor.mobileNumber,
             licenseNumber: doctor.licenseNumber,
             specialization: doctor.specialization,
-            temporaryPassword: '',
             serviceIds: Array.isArray(doctor.serviceIds)
               ? doctor.serviceIds.map((item) => item._id)
               : [],
@@ -181,20 +172,10 @@ function DoctorsManagement() {
 
   const closeForm = () => {
     setDialog(null)
-    setShowTemporaryPassword(false)
-    setTemporaryPasswordTouched(false)
   }
 
   const change = (field) => (event) =>
     setForm({ ...form, [field]: event.target.value })
-
-  const temporaryPasswordValidationMessage = !dialog?._id
-    ? form.temporaryPassword.length === 0
-      ? 'Temporary password is required.'
-      : form.temporaryPassword.length < 8 || form.temporaryPassword.length > 16
-        ? 'Temporary password must be 8 to 16 characters.'
-        : ''
-    : ''
 
   const requiredFields = [
     'firstName',
@@ -207,18 +188,10 @@ function DoctorsManagement() {
   const requiredFieldsComplete = requiredFields.every((field) =>
     String(form[field] || '').trim(),
   )
-  const formIsValid =
-    requiredFieldsComplete &&
-    form.serviceIds.length > 0 &&
-    (Boolean(dialog?._id) || !temporaryPasswordValidationMessage)
-  const showTemporaryPasswordError =
-    !dialog?._id &&
-    temporaryPasswordTouched &&
-    Boolean(temporaryPasswordValidationMessage)
+  const formIsValid = requiredFieldsComplete && form.serviceIds.length > 0
 
   const save = async () => {
     if (!formIsValid) {
-      if (!dialog?._id) setTemporaryPasswordTouched(true)
       setNotice({
         severity: 'error',
         message: 'Complete all required fields.',
@@ -431,17 +404,15 @@ function DoctorsManagement() {
                             <CalendarMonthOutlinedIcon />
                           </IconButton>
                         </Tooltip>
-                        {doctor.userId?.passwordSetupRequired === true && (
-                          <Tooltip title="Resend setup invitation">
+                        <Tooltip title="Email a new temporary password">
                             <IconButton
                               color="secondary"
-                              aria-label="Resend setup invitation"
+                              aria-label="Email a new temporary password"
                               onClick={() => resendInvitation(doctor._id)}
                             >
                               <AddIcon />
                             </IconButton>
                           </Tooltip>
-                        )}
                         <Tooltip title="Edit">
                           <IconButton
                             aria-label="Edit doctor"
@@ -529,64 +500,6 @@ function DoctorsManagement() {
                 fullWidth
               />
             </Stack>
-
-            {!dialog?._id && (
-              <TextField
-                required
-                fullWidth
-                label="Temporary Password"
-                type={showTemporaryPassword ? 'text' : 'password'}
-                value={form.temporaryPassword}
-                onChange={(event) => {
-                  setTemporaryPasswordTouched(true)
-                  setForm({ ...form, temporaryPassword: event.target.value })
-                }}
-                onBlur={() => setTemporaryPasswordTouched(true)}
-                error={showTemporaryPasswordError}
-                helperText={
-                  showTemporaryPasswordError
-                    ? temporaryPasswordValidationMessage
-                    : 'Use 8 to 16 characters.'
-                }
-                slotProps={{
-                  htmlInput: {
-                    minLength: 8,
-                    autoComplete: 'new-password',
-                  },
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Tooltip
-                          title={
-                            showTemporaryPassword
-                              ? 'Hide temporary password'
-                              : 'Show temporary password'
-                          }
-                        >
-                          <IconButton
-                            edge="end"
-                            aria-label={
-                              showTemporaryPassword
-                                ? 'Hide temporary password'
-                                : 'Show temporary password'
-                            }
-                            onClick={() =>
-                              setShowTemporaryPassword((visible) => !visible)
-                            }
-                          >
-                            {showTemporaryPassword ? (
-                              <VisibilityOffOutlinedIcon />
-                            ) : (
-                              <VisibilityOutlinedIcon />
-                            )}
-                          </IconButton>
-                        </Tooltip>
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
-            )}
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField

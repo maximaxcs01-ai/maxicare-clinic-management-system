@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import AuthPage from '../components/AuthPage'
+import TermsPrivacyDialog from '../components/TermsPrivacyDialog'
 import api from '../services/api'
 import useAuth from '../hooks/useAuth'
 import { takeAuthMessage } from '../utils/authStorage'
@@ -14,6 +15,7 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState(takeAuthMessage)
   const [loading, setLoading] = useState(false)
+  const [policyOpen, setPolicyOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const { login } = useAuth()
@@ -36,7 +38,11 @@ function Login() {
 
       login(response.data.token, response.data.user)
 
-      navigate(getRoleDestination(response.data.user?.role))
+      navigate(
+        response.data.mustChangePassword === true
+          ? '/setup-password'
+          : getRoleDestination(response.data.user?.role),
+      )
     } catch (requestError) {
       setError(
         requestError.response?.data?.message ||
@@ -111,8 +117,20 @@ function Login() {
         </button>
       </form>
 
+      <p className="auth-policy-links">
+        By signing in, you agree to our{' '}
+        <button type="button" onClick={() => setPolicyOpen(true)}>Terms of Service</button>
+        {' '}and{' '}
+        <button type="button" onClick={() => setPolicyOpen(true)}>Privacy Policy</button>.
+      </p>
+
       <div className="auth-divider"><span>New to Maxicare Clinic?</span></div>
       <Link className="auth-secondary-button" to="/register">Create an Account</Link>
+      <TermsPrivacyDialog
+        open={policyOpen}
+        onClose={() => setPolicyOpen(false)}
+        reviewOnly
+      />
     </AuthPage>
   )
 }

@@ -1,5 +1,6 @@
 const service = require("../services/prescriptionService");
 const { recordRequestAudit } = require("../services/auditService");
+const notifications = require("../services/notificationService");
 
 const listPrescriptions = async (req, res, next) => {
   try {
@@ -91,6 +92,16 @@ const issuePrescription = async (req, res, next) => {
       description: "Prescription issued.",
       metadata: { patientId: data.patientId?._id || data.patientId, consultationId: data.consultationId?._id || data.consultationId, status: data.status },
     });
+    await notifications.publishSafely(() =>
+      notifications.notifyPatient(data.patientId?._id || data.patientId, {
+        type: "prescription_issued",
+        title: "Prescription Issued",
+        message: "A prescription from your consultation is now available.",
+        targetType: "patient_prescriptions",
+        targetId: data._id,
+        dedupeKey: `prescription:${data._id}:issued`,
+      })
+    );
     res.json({ message: "Prescription issued.", data });
   } catch (error) {
     next(error);

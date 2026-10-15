@@ -193,6 +193,7 @@ test("keeps activation recoverable when email delivery fails", async () => {
 });
 
 test("completing account setup activates the linked Patient portal", async () => {
+  user.requiresPasswordChange = true;
   const token = "high-entropy-setup-token";
   tokenRecord = {
     _id: "530000000000000000000001",
@@ -217,6 +218,7 @@ test("completing account setup activates the linked Patient portal", async () =>
   });
   assert.equal(String(result.userId), userId);
   assert.equal(user.passwordSetupRequired, false);
+  assert.equal(user.requiresPasswordChange, false);
   assert.equal(user.emailVerified, true);
   assert.equal(user.tokenVersion, 1);
   assert.equal(portalActivated, true);

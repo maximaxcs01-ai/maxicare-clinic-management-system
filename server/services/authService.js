@@ -36,6 +36,7 @@ const registerPendingPatient = async (registration) => {
   const otp = generateOtp();
   const passwordHash = await bcrypt.hash(registration.password, 10);
   const timing = buildOtpTiming();
+  const acceptedAt = new Date();
 
   const pendingData = {
     firstName: registration.firstName,
@@ -43,6 +44,9 @@ const registerPendingPatient = async (registration) => {
     lastName: registration.lastName,
     email: registration.email,
     mobileNumber: registration.mobileNumber,
+    termsAcceptedAt: acceptedAt,
+    privacyAcceptedAt: acceptedAt,
+    termsVersion: registration.termsVersion,
     passwordHash,
     otpHash: hashOtp(registration.email, otp),
     otpAttempts: 0,
@@ -154,6 +158,15 @@ const verifyPendingPatient = async ({ email, otp }) => {
             role: "patient",
             status: "active",
             emailVerified: true,
+            ...(currentPending.termsAcceptedAt && {
+              termsAcceptedAt: currentPending.termsAcceptedAt,
+            }),
+            ...(currentPending.privacyAcceptedAt && {
+              privacyAcceptedAt: currentPending.privacyAcceptedAt,
+            }),
+            ...(currentPending.termsVersion && {
+              termsVersion: currentPending.termsVersion,
+            }),
           },
         ],
         { session }

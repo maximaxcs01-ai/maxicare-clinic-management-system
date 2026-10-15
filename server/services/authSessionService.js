@@ -19,7 +19,9 @@ const createAuthSession = (user) => ({
     lastName: user.lastName,
     email: user.email,
     role: user.role,
+    mustChangePassword: user.requiresPasswordChange === true,
   },
+  mustChangePassword: user.requiresPasswordChange === true,
 });
 
 module.exports = { createAuthSession };

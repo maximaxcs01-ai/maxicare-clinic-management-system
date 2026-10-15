@@ -6,6 +6,8 @@ import RadioButtonUncheckedOutlinedIcon from '@mui/icons-material/RadioButtonUnc
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import AuthPage from '../components/AuthPage'
+import TermsPrivacyDialog from '../components/TermsPrivacyDialog'
+import { CURRENT_TERMS_VERSION } from '../config/legal'
 import api from '../services/api'
 
 const initialForm = {
@@ -90,6 +92,9 @@ function Register() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [policyOpen, setPolicyOpen] = useState(false)
+  const [policyAccepted, setPolicyAccepted] = useState(false)
+  const [consentError, setConsentError] = useState('')
   const navigate = useNavigate()
 
   const handleChange = (event) => {
@@ -154,11 +159,22 @@ function Register() {
     event.preventDefault()
     if (loading || !validateForm()) return
 
+    if (!policyAccepted) {
+      setConsentError('Please review and accept the Terms of Service and Privacy Policy.')
+      setPolicyOpen(true)
+      return
+    }
+
     setError('')
 
     try {
       setLoading(true)
-      const response = await api.post('/auth/register', formData)
+      const response = await api.post('/auth/register', {
+        ...formData,
+        termsAccepted: true,
+        privacyAccepted: true,
+        termsVersion: CURRENT_TERMS_VERSION,
+      })
       const email = response.data.email || formData.email.trim().toLowerCase()
       const cooldownUntil = Date.now() + 60000
 
@@ -302,7 +318,30 @@ function Register() {
             </p>
           </div>
 
-          <button className="auth-submit-button register-submit" type="submit" disabled={loading || !formIsValid}>
+          <div className="registration-consent">
+            <label>
+              <input
+                type="checkbox"
+                checked={policyAccepted}
+                onChange={() => {
+                  if (policyAccepted) {
+                    setPolicyAccepted(false)
+                  } else {
+                    setPolicyOpen(true)
+                  }
+                }}
+              />
+              <span>
+                I agree to the Terms of Service and Privacy Policy.
+              </span>
+            </label>
+            <button type="button" onClick={() => setPolicyOpen(true)}>
+              Review Terms &amp; Privacy
+            </button>
+            {consentError && <p role="alert">{consentError}</p>}
+          </div>
+
+          <button className="auth-submit-button register-submit" type="submit" disabled={loading || !formIsValid || !policyAccepted}>
             {loading ? 'Sending verification code...' : 'Register'}
           </button>
         </form>
@@ -310,6 +349,15 @@ function Register() {
         <p className="auth-link">
           Already have an account? <Link to="/login">Sign in</Link>
         </p>
+        <TermsPrivacyDialog
+          open={policyOpen}
+          onClose={() => setPolicyOpen(false)}
+          onAccept={() => {
+            setPolicyAccepted(true)
+            setConsentError('')
+            setPolicyOpen(false)
+          }}
+        />
     </AuthPage>
   )
 }

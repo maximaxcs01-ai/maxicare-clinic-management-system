@@ -143,6 +143,7 @@ const completeSetup = async ({ token, newPassword, confirmPassword }, request) =
           $set: {
             password: passwordHash,
             passwordSetupRequired: false,
+            requiresPasswordChange: false,
             emailVerified: true,
             tokenVersion: (user.tokenVersion || 0) + 1,
           },

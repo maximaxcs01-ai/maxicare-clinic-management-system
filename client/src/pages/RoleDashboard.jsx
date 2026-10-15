@@ -105,6 +105,26 @@ function PatientDashboard({ user, dashboard, loading, error }) {
         </Box>
       ) : (
         <>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <MetricCard
+              title="Upcoming Appointments"
+              value={dashboard?.upcomingCount ?? 0}
+              to="/patient/appointments"
+            />
+            <MetricCard
+              title="Completed Visits"
+              value={Array.isArray(dashboard?.recentConsultations)
+                ? dashboard.recentConsultations.length
+                : 0}
+              to="/patient/medical-history"
+            />
+            <MetricCard
+              title="Prescriptions"
+              value={dashboard?.issuedPrescriptionCount ?? 0}
+              to="/patient/prescriptions"
+            />
+          </Grid>
+
           <Paper className="patient-next-appointment">
             <Stack
               direction={{ xs: 'column', md: 'row' }}
@@ -158,7 +178,12 @@ function PatientDashboard({ user, dashboard, loading, error }) {
             <Grid container spacing={2}>
               {patientActions.map(({ label, caption, to, icon: Icon }) => (
                 <Grid key={to} size={{ xs: 12, sm: 4 }}>
-                  <Paper component={RouterLink} to={to} className="patient-quick-action">
+                  <Paper
+                    component={RouterLink}
+                    to={to}
+                    className="patient-quick-action"
+                    aria-label={`${label}: ${caption}`}
+                  >
                     <span className="patient-quick-action-icon"><Icon /></span>
                     <Box sx={{ minWidth: 0 }}>
                       <Typography fontWeight={700}>{label}</Typography>
@@ -260,12 +285,30 @@ function DoctorDashboard({ user, dashboard, loading, error }) {
         <>
           <Box className="doctor-metric-grid">
             {[
-              ["Today's Appointments", dashboard?.todayAppointments],
-              ['Waiting Now', dashboard?.waitingCalledQueueCount],
-              ['Completed Today', dashboard?.completedConsultationsToday],
-              ['Next Appointment', nextAppointment ? formatDateTime(nextAppointment.startAt) : 'None'],
-            ].map(([title, value]) => (
-              <Paper key={title} className="doctor-metric-card">
+              ["Today's Appointments", dashboard?.todayAppointments, '/doctor/appointments'],
+              ['Waiting Patients', dashboard?.waitingCalledQueueCount, '/doctor/queue'],
+              ['Completed Today', dashboard?.completedConsultationsToday, '/doctor/consultations'],
+              ['Next Appointment', nextAppointment ? formatDateTime(nextAppointment.startAt) : 'None', '/doctor/appointments'],
+              ['Prescriptions', 'View', '/doctor/prescriptions'],
+            ].map(([title, value, to]) => (
+              <Paper
+                key={title}
+                component={RouterLink}
+                to={to}
+                className="doctor-metric-card"
+                aria-label={`${title}: ${value ?? 'unavailable'}`}
+                sx={{
+                textDecoration: 'none',
+                cursor: 'pointer',
+                transition: 'transform 150ms ease, box-shadow 150ms ease',
+                  '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 },
+                  '&:focus-visible': {
+                    outline: '3px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: 2,
+                  },
+                }}
+              >
                   <Typography variant="body2" color="text.secondary">{title}</Typography>
                   <Typography variant="h5" fontWeight={750}>{value ?? '—'}</Typography>
               </Paper>
@@ -467,10 +510,30 @@ function AdminDashboard({ dashboard, loading, error }) {
             {[
               ['Total Patients', dashboard?.totalPatients, '/admin/patients'],
               ['Active Doctors', dashboard?.activeDoctors, '/admin/doctors'],
+              ['Active Services', dashboard?.activeServices, '/admin/services'],
               ["Today's Appointments", dashboard?.todayAppointments, '/admin/appointments'],
               ['Walk-Ins Today', dashboard?.walkInsToday, '/admin/walk-ins'],
+              ['Active Queue', dashboard?.activeQueue, '/admin/queue'],
+              ['Users', 'Manage', '/admin/users'],
             ].map(([title, value, to]) => (
-              <Paper key={title} component={RouterLink} to={to} className="admin-summary-card">
+              <Paper
+                key={title}
+                component={RouterLink}
+                to={to}
+                className="admin-summary-card"
+                aria-label={`${title}: ${value ?? 'unavailable'}`}
+                sx={{
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  transition: 'transform 150ms ease, box-shadow 150ms ease',
+                  '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 },
+                  '&:focus-visible': {
+                    outline: '3px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: 2,
+                  },
+                }}
+              >
                 <Typography variant="body2" color="text.secondary">{title}</Typography>
                 <Typography variant="h4">{value ?? '—'}</Typography>
               </Paper>
@@ -585,6 +648,7 @@ function MetricCard({ title, value, subtitle, to, gridItem = true }) {
         height: '100%',
         transition: 'transform 150ms ease, box-shadow 150ms ease',
         ...(to && {
+          cursor: 'pointer',
           '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 },
         }),
       }}
@@ -606,7 +670,22 @@ function MetricCard({ title, value, subtitle, to, gridItem = true }) {
   )
   const card = (
     to ? (
-      <Box component={RouterLink} to={to} sx={{ display: 'block', height: '100%', textDecoration: 'none' }}>
+    <Box
+      component={RouterLink}
+      to={to}
+      aria-label={`${title}: ${value ?? 'unavailable'}`}
+      sx={{
+        display: 'block',
+        height: '100%',
+        textDecoration: 'none',
+        cursor: 'pointer',
+        '&:focus-visible': {
+          outline: '3px solid',
+          outlineColor: 'primary.main',
+          outlineOffset: 2,
+        },
+      }}
+    >
         {content}
       </Box>
     ) : content
@@ -710,6 +789,12 @@ function ReceptionistDashboard({ user, dashboard, loading, error }) {
                 title="Active Queue"
                 value={activeQueueCount ?? '—'}
                 to="/receptionist/queue"
+                gridItem={false}
+              />
+              <MetricCard
+                title="Patients"
+                value="Manage"
+                to="/receptionist/patients"
                 gridItem={false}
               />
           </Box>

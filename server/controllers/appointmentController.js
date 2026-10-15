@@ -1,6 +1,11 @@
 const service = require("../services/appointmentService");
 const queueService = require("../services/queueService");
 const { recordRequestAudit } = require("../services/auditService");
+const notifications = require("../services/notificationService");
+
+const entityId = (value) => value?._id || value;
+const doctorName = (doctor) =>
+  doctor?.firstName ? `Dr. ${doctor.firstName} ${doctor.lastName}` : "your doctor";
 
 const createAppointment = async (req, res, next) => {
   try {
@@ -22,6 +27,26 @@ const createAppointment = async (req, res, next) => {
         bookingType: appointment.bookingType,
       },
     });
+    await notifications.publishSafely(() =>
+      Promise.all([
+        notifications.notifyRoles(["admin", "receptionist"], {
+          type: "appointment_booked",
+          title: "New Appointment Request",
+          message: "A new patient appointment requires review.",
+          targetType: "staff_appointments",
+          targetId: appointment._id,
+          dedupeKey: `appointment:${appointment._id}:booked:staff`,
+        }),
+        notifications.notifyDoctor(entityId(appointment.doctorId), {
+          type: "appointment_assigned",
+          title: "New Appointment Assignment",
+          message: "A new appointment has been added to your schedule.",
+          targetType: "doctor_appointments",
+          targetId: appointment._id,
+          dedupeKey: `appointment:${appointment._id}:assigned`,
+        }),
+      ])
+    );
     res.status(201).json({
       message: "Appointment booked successfully.",
       data: appointment,
@@ -111,6 +136,16 @@ const confirmAppointment = async (req, res, next) => {
       description: "Appointment confirmed.",
       metadata: { status: appointment.status, patientId: appointment.patientId?._id || appointment.patientId },
     });
+    await notifications.publishSafely(() =>
+      notifications.notifyPatient(entityId(appointment.patientId), {
+        type: "appointment_confirmed",
+        title: "Appointment Confirmed",
+        message: `Your appointment with ${doctorName(appointment.doctorId)} has been confirmed.`,
+        targetType: "patient_appointments",
+        targetId: appointment._id,
+        dedupeKey: `appointment:${appointment._id}:confirmed`,
+      })
+    );
     res.json({
       message: "Appointment confirmed successfully.",
       data: appointment,
@@ -135,6 +170,16 @@ const rejectAppointment = async (req, res, next) => {
       description: "Appointment rejected.",
       metadata: { status: appointment.status, patientId: appointment.patientId?._id || appointment.patientId },
     });
+    await notifications.publishSafely(() =>
+      notifications.notifyPatient(entityId(appointment.patientId), {
+        type: "appointment_rejected",
+        title: "Appointment Rejected",
+        message: "Your appointment request was not approved. Open Appointments for details.",
+        targetType: "patient_appointments",
+        targetId: appointment._id,
+        dedupeKey: `appointment:${appointment._id}:rejected`,
+      })
+    );
     res.json({
       message: "Appointment rejected successfully.",
       data: appointment,
@@ -159,6 +204,26 @@ const cancelAppointment = async (req, res, next) => {
       description: "Appointment cancelled.",
       metadata: { status: appointment.status, patientId: appointment.patientId?._id || appointment.patientId },
     });
+    await notifications.publishSafely(() =>
+      Promise.all([
+        notifications.notifyPatient(entityId(appointment.patientId), {
+          type: "appointment_cancelled",
+          title: "Appointment Cancelled",
+          message: "An appointment was cancelled. Open Appointments for details.",
+          targetType: "patient_appointments",
+          targetId: appointment._id,
+          dedupeKey: `appointment:${appointment._id}:cancelled`,
+        }),
+        notifications.notifyDoctor(entityId(appointment.doctorId), {
+          type: "appointment_cancelled",
+          title: "Appointment Cancelled",
+          message: "An appointment on your schedule was cancelled.",
+          targetType: "doctor_appointments",
+          targetId: appointment._id,
+          dedupeKey: `appointment:${appointment._id}:cancelled:doctor`,
+        }),
+      ])
+    );
     res.json({
       message: "Appointment cancelled successfully.",
       data: appointment,
@@ -175,6 +240,26 @@ const rescheduleAppointment = async (req, res, next) => {
       req.user,
       req.validatedReschedule,
       req
+    );
+    await notifications.publishSafely(() =>
+      Promise.all([
+        notifications.notifyPatient(entityId(appointment.patientId), {
+          type: "appointment_rescheduled",
+          title: "Appointment Rescheduled",
+          message: "Your appointment schedule has changed. Open Appointments for details.",
+          targetType: "patient_appointments",
+          targetId: appointment._id,
+          dedupeKey: `appointment:${appointment._id}:rescheduled:${appointment.rescheduleCount}`,
+        }),
+        notifications.notifyDoctor(entityId(appointment.doctorId), {
+          type: "appointment_rescheduled",
+          title: "Appointment Rescheduled",
+          message: "An appointment on your schedule was rescheduled.",
+          targetType: "doctor_appointments",
+          targetId: appointment._id,
+          dedupeKey: `appointment:${appointment._id}:rescheduled:${appointment.rescheduleCount}:doctor`,
+        }),
+      ])
     );
     res.json({
       message: "Appointment rescheduled successfully.",
@@ -204,6 +289,17 @@ const addAppointmentToQueue = async (req, res, next) => {
       req.params.id,
       req.user,
       req
+    );
+    await notifications.publishSafely(() =>
+      notifications.notifyDoctor(entityId(data.queueEntry?.doctorId), {
+        type: "patient_waiting",
+        title: "Patient Waiting",
+        message: `${data.queueEntry?.patientId?.firstName || "A patient"} ${data.queueEntry?.patientId?.lastName || ""}`.trim() +
+          " is waiting in your queue.",
+        targetType: "doctor_queue",
+        targetId: data.queueEntry?._id,
+        dedupeKey: `queue:${data.queueEntry?._id}:waiting`,
+      })
     );
     res.json({ message: "Patient added to the queue.", data });
   } catch (error) {
