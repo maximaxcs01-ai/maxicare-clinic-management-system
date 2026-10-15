@@ -25,6 +25,12 @@ import {
   createPrescription,
   getPrescriptionForConsultation,
 } from '../services/prescriptionApi'
+import {
+  consultationDraftToRequest,
+  consultationToDraft,
+  createEmptyConsultationDraft,
+  savedConsultationMatchesRequest,
+} from '../utils/consultationDraft'
 import { openPrescriptionAfterSaving } from '../utils/openPrescriptionAfterSaving'
 
 const VITAL_FIELDS = [
@@ -38,41 +44,6 @@ const VITAL_FIELDS = [
   ['height', 'Height', 'cm'],
 ]
 
-const emptyDraft = () => ({
-  chiefComplaint: '',
-  symptoms: '',
-  vitals: Object.fromEntries(VITAL_FIELDS.map(([field]) => [field, ''])),
-  diagnosis: '',
-  treatmentPlan: '',
-  instructions: '',
-  privateNotes: '',
-})
-
-const toDraft = (consultation) => ({
-  chiefComplaint: consultation.chiefComplaint || '',
-  symptoms: consultation.symptoms || '',
-  vitals: Object.fromEntries(
-    VITAL_FIELDS.map(([field]) => [
-      field,
-      consultation.vitals?.[field] ?? '',
-    ]),
-  ),
-  diagnosis: consultation.diagnosis || '',
-  treatmentPlan: consultation.treatmentPlan || '',
-  instructions: consultation.instructions || '',
-  privateNotes: consultation.privateNotes || '',
-})
-
-const toRequestBody = (draft) => ({
-  ...draft,
-  vitals: Object.fromEntries(
-    VITAL_FIELDS.map(([field]) => [
-      field,
-      draft.vitals[field] === '' ? null : Number(draft.vitals[field]),
-    ]),
-  ),
-})
-
 const formatDateTime = (value) =>
   new Intl.DateTimeFormat('en-PH', {
     dateStyle: 'medium',
@@ -84,7 +55,7 @@ function DoctorConsultationWorkspace() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [consultation, setConsultation] = useState(null)
-  const [draft, setDraft] = useState(emptyDraft)
+  const [draft, setDraft] = useState(createEmptyConsultationDraft)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -101,7 +72,7 @@ function DoctorConsultationWorkspace() {
       .then(async (response) => {
         if (!active) return
         setConsultation(response.data.data)
-        setDraft(toDraft(response.data.data))
+        setDraft(consultationToDraft(response.data.data))
         setError('')
         try {
           const prescriptionResponse = await getPrescriptionForConsultation(id)
@@ -131,16 +102,19 @@ function DoctorConsultationWorkspace() {
     setDraft((current) => ({ ...current, [field]: value }))
   }
 
-  const saveCurrentDraft = async () => {
+  const saveCurrentDraft = async (
+    requestBody = consultationDraftToRequest(draft),
+  ) => {
     setSaving(true)
     try {
-      const response = await saveConsultationDraft(
-        id,
-        toRequestBody(draft),
-      )
-      setConsultation(response.data.data)
-      setDraft(toDraft(response.data.data))
-      return response.data.data
+      const response = await saveConsultationDraft(id, requestBody)
+      const savedConsultation = response.data?.data
+      if (!savedConsultationMatchesRequest(savedConsultation, requestBody)) {
+        throw new Error('The saved consultation did not match the submitted draft.')
+      }
+      setConsultation(savedConsultation)
+      setDraft(consultationToDraft(savedConsultation))
+      return savedConsultation
     } catch (requestError) {
       setError(
         requestError.response?.data?.message ||
@@ -179,10 +153,10 @@ function DoctorConsultationWorkspace() {
     try {
       const response = await completeConsultation(
         id,
-        toRequestBody(draft),
+        consultationDraftToRequest(draft),
       )
       setConsultation(response.data.data)
-      setDraft(toDraft(response.data.data))
+      setDraft(consultationToDraft(response.data.data))
       setConfirmOpen(false)
       setNotice({ severity: 'success', message: response.data.message })
     } catch (requestError) {
@@ -206,6 +180,7 @@ function DoctorConsultationWorkspace() {
     setPrescriptionAction(true)
     setPrescriptionLoading(true)
     setError('')
+    const requestBody = consultationDraftToRequest(draft)
     try {
       let saveFailed = false
       try {
@@ -213,7 +188,7 @@ function DoctorConsultationWorkspace() {
           saveDraft: async () => {
             if (readOnly) return consultation
             try {
-              return await saveCurrentDraft()
+              return await saveCurrentDraft(requestBody)
             } catch (requestError) {
               saveFailed = true
               throw requestError
