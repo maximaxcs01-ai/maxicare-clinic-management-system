@@ -2,6 +2,8 @@
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import {
   Alert,
   Box,
@@ -13,6 +15,7 @@ import {
   DialogTitle,
   FormControl,
   IconButton,
+  InputAdornment,
   InputLabel,
   ListItemText,
   MenuItem,
@@ -54,6 +57,7 @@ const emptyForm = {
   mobileNumber: '',
   licenseNumber: '',
   specialization: '',
+  temporaryPassword: '',
   serviceIds: [],
   status: 'active',
 }
@@ -72,6 +76,7 @@ function DoctorsManagement() {
   const [reload, setReload] = useState(0)
   const [dialog, setDialog] = useState(null)
   const [form, setForm] = useState(emptyForm)
+  const [showTemporaryPassword, setShowTemporaryPassword] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirm, setConfirm] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -151,6 +156,7 @@ function DoctorsManagement() {
 
   const openForm = (doctor) => {
     setDialog(doctor || {})
+    setShowTemporaryPassword(false)
     setForm(
       doctor
         ? {
@@ -161,6 +167,7 @@ function DoctorsManagement() {
             mobileNumber: doctor.mobileNumber,
             licenseNumber: doctor.licenseNumber,
             specialization: doctor.specialization,
+            temporaryPassword: '',
             serviceIds: Array.isArray(doctor.serviceIds)
               ? doctor.serviceIds.map((item) => item._id)
               : [],
@@ -172,6 +179,14 @@ function DoctorsManagement() {
 
   const change = (field) => (event) =>
     setForm({ ...form, [field]: event.target.value })
+
+  const temporaryPasswordError = !dialog?._id
+    ? form.temporaryPassword.length === 0
+      ? 'Temporary password is required.'
+      : form.temporaryPassword.length < 8 || form.temporaryPassword.length > 16
+        ? 'Use 8 to 16 characters.'
+        : ''
+    : ''
 
   const save = async () => {
     const required = [
@@ -185,7 +200,10 @@ function DoctorsManagement() {
 
     if (
       required.some((field) => !String(form[field] || '').trim()) ||
-      !form.serviceIds.length
+      !form.serviceIds.length ||
+      (!dialog?._id &&
+        (form.temporaryPassword.length < 8 ||
+          form.temporaryPassword.length > 16))
     ) {
       setNotice({
         severity: 'error',
@@ -498,6 +516,57 @@ function DoctorsManagement() {
               />
             </Stack>
 
+            {!dialog?._id && (
+              <TextField
+                required
+                fullWidth
+                label="Temporary Password"
+                type={showTemporaryPassword ? 'text' : 'password'}
+                value={form.temporaryPassword}
+                onChange={change('temporaryPassword')}
+                error={Boolean(temporaryPasswordError)}
+                helperText={temporaryPasswordError || 'Use 8 to 16 characters.'}
+                slotProps={{
+                  htmlInput: {
+                    minLength: 8,
+                    maxLength: 16,
+                    autoComplete: 'new-password',
+                  },
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip
+                          title={
+                            showTemporaryPassword
+                              ? 'Hide temporary password'
+                              : 'Show temporary password'
+                          }
+                        >
+                          <IconButton
+                            edge="end"
+                            aria-label={
+                              showTemporaryPassword
+                                ? 'Hide temporary password'
+                                : 'Show temporary password'
+                            }
+                            onClick={() =>
+                              setShowTemporaryPassword((visible) => !visible)
+                            }
+                          >
+                            {showTemporaryPassword ? (
+                              <VisibilityOffOutlinedIcon />
+                            ) : (
+                              <VisibilityOutlinedIcon />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+            )}
+
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
                 required
@@ -587,7 +656,11 @@ function DoctorsManagement() {
           <Button onClick={() => setDialog(null)} disabled={saving}>
             Cancel
           </Button>
-          <Button variant="contained" onClick={save} disabled={saving}>
+          <Button
+            variant="contained"
+            onClick={save}
+            disabled={saving || Boolean(temporaryPasswordError)}
+          >
             {saving ? 'Saving...' : dialog?._id ? 'Save Changes' : 'Add Doctor'}
           </Button>
         </DialogActions>
