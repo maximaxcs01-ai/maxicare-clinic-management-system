@@ -9,6 +9,7 @@ function SetupAccount() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || ''
   const [emailLabel, setEmailLabel] = useState('')
+  const [accountType, setAccountType] = useState('staff')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,6 +35,7 @@ function SetupAccount() {
         if (!active) return
 
         setEmailLabel(response.data.email || '')
+        setAccountType(response.data.accountType || 'staff')
         setError('')
       } catch (requestError) {
         if (!active) return
@@ -68,6 +70,8 @@ function SetupAccount() {
         : '',
     [confirmPassword, newPassword, touched.confirm],
   )
+
+  const isPatientActivation = accountType === 'patient'
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -137,7 +141,7 @@ function SetupAccount() {
     <AuthPage>
         <div className="auth-heading">
           <span className="auth-icon-badge"><PersonAddAlt1OutlinedIcon /></span>
-          <h1>Set up your account</h1>
+          <h1>{isPatientActivation ? 'Activate Patient Portal' : 'Set up your account'}</h1>
           <p className="subtitle">
             Create a password for {emailLabel || 'your clinic account'}.
           </p>
@@ -165,7 +169,9 @@ function SetupAccount() {
           </div>
 
           <div className="auth-field">
-            <label htmlFor="confirm-new-password">Confirm Password *</label>
+            <label htmlFor="confirm-new-password">
+              {isPatientActivation ? 'Confirm New Password *' : 'Confirm Password *'}
+            </label>
             <input
               id="confirm-new-password"
               type="password"
@@ -183,7 +189,11 @@ function SetupAccount() {
           </div>
 
           <button className="auth-submit-button" type="submit" disabled={loading}>
-            {loading ? 'Setting up account...' : 'Create Password'}
+            {loading
+              ? 'Setting up account...'
+              : isPatientActivation
+                ? 'Activate Account'
+                : 'Create Password'}
           </button>
         </form>
     </AuthPage>

@@ -24,8 +24,10 @@ const original = {
   userFindOneAndUpdate: User.findOneAndUpdate,
   accountTokenFind: AccountSetupToken.find,
   accountTokenFindById: AccountSetupToken.findById,
+  accountTokenDeleteMany: AccountSetupToken.deleteMany,
   accountTokenDeleteOne: AccountSetupToken.deleteOne,
   sendPatientInvitation: accountSetupService.sendPatientInvitation,
+  clientOrigin: process.env.CLIENT_ORIGIN,
 };
 
 const query = (resolve) => ({
@@ -48,6 +50,7 @@ let user;
 
 beforeEach(() => {
   process.env.OTP_HASH_SECRET = "test-secret-for-account-setup";
+  process.env.CLIENT_ORIGIN = "https://maxicare-clinic.vercel.app/";
   patient = {
     _id: patientId,
     firstName: "Walkin",
@@ -94,9 +97,10 @@ beforeEach(() => {
     return user;
   };
   AccountSetupToken.find = () => ({
-    select: async () => [tokenRecord],
+    select: async () => (tokenRecord ? [tokenRecord] : []),
   });
   AccountSetupToken.findById = () => query(() => tokenRecord);
+  AccountSetupToken.deleteMany = async () => ({ deletedCount: 0 });
   AccountSetupToken.deleteOne = async () => {
     tokenRecord = null;
   };
@@ -117,9 +121,67 @@ afterEach(() => {
   User.findOneAndUpdate = original.userFindOneAndUpdate;
   AccountSetupToken.find = original.accountTokenFind;
   AccountSetupToken.findById = original.accountTokenFindById;
+  AccountSetupToken.deleteMany = original.accountTokenDeleteMany;
   AccountSetupToken.deleteOne = original.accountTokenDeleteOne;
   accountSetupService.sendPatientInvitation = original.sendPatientInvitation;
   delete process.env.OTP_HASH_SECRET;
+  if (original.clientOrigin === undefined) {
+    delete process.env.CLIENT_ORIGIN;
+  } else {
+    process.env.CLIENT_ORIGIN = original.clientOrigin;
+  }
+});
+
+test("builds an absolute walk-in activation URL for the setup-account route", () => {
+  const setupUrl = accountSetupService.buildAccountSetupUrl("token/with unsafe chars");
+  const parsed = new URL(setupUrl);
+
+  assert.equal(parsed.origin, "https://maxicare-clinic.vercel.app");
+  assert.equal(parsed.pathname, "/setup-account");
+  assert.equal(parsed.searchParams.get("token"), "token/with unsafe chars");
+  assert.match(setupUrl, /^https:\/\//);
+});
+
+test("uses the first canonical CLIENT_ORIGIN entry when CORS has multiple origins", () => {
+  process.env.CLIENT_ORIGIN =
+    "https://maxicare-clinic.vercel.app, http://localhost:5173";
+
+  assert.equal(
+    accountSetupService.buildAccountSetupUrl("safe-token"),
+    "https://maxicare-clinic.vercel.app/setup-account?token=safe-token"
+  );
+});
+
+test("rejects a missing frontend origin instead of creating a broken link", () => {
+  delete process.env.CLIENT_ORIGIN;
+
+  assert.throws(
+    () => accountSetupService.buildAccountSetupUrl("safe-token"),
+    (error) => error.statusCode === 503 && /Frontend URL configuration/.test(error.message)
+  );
+});
+
+test("rejects a malformed frontend origin without an HTTP protocol", () => {
+  process.env.CLIENT_ORIGIN = "maxicare-clinic.vercel.app";
+
+  assert.throws(
+    () => accountSetupService.buildAccountSetupUrl("safe-token"),
+    (error) => error.statusCode === 503 && /Frontend URL configuration/.test(error.message)
+  );
+});
+
+test("does not replace a setup token when the frontend origin is invalid", async () => {
+  delete process.env.CLIENT_ORIGIN;
+  let tokenStoreTouched = false;
+  AccountSetupToken.deleteMany = async () => {
+    tokenStoreTouched = true;
+  };
+
+  await assert.rejects(
+    original.sendPatientInvitation(user),
+    (error) => error.statusCode === 503
+  );
+  assert.equal(tokenStoreTouched, false);
 });
 
 test("activates a walk-in by linking its existing Patient record", async () => {
@@ -223,5 +285,34 @@ test("completing account setup activates the linked Patient portal", async () =>
   assert.equal(user.tokenVersion, 1);
   assert.equal(portalActivated, true);
   assert.equal(tokenRecord, null);
+
+  await assert.rejects(
+    accountSetupService.completeSetup({
+      token,
+      newPassword: "SecurePass123",
+      confirmPassword: "SecurePass123",
+    }),
+    /already been used or has expired/
+  );
   Patient.updateOne = PatientUpdate;
+});
+
+test("rejects invalid password length and confirmation before account activation", async () => {
+  await assert.rejects(
+    accountSetupService.completeSetup({
+      token: "unused-token",
+      newPassword: "short",
+      confirmPassword: "short",
+    }),
+    /8 to 16 characters/
+  );
+
+  await assert.rejects(
+    accountSetupService.completeSetup({
+      token: "unused-token",
+      newPassword: "SecurePass123",
+      confirmPassword: "Different123",
+    }),
+    /Passwords do not match/
+  );
 });

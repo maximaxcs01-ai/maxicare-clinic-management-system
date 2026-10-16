@@ -14,8 +14,44 @@ const {
 } = require("./emailService");
 
 const SETUP_TOKEN_VALIDITY_MS = 24 * 60 * 60 * 1000;
+const FRONTEND_CONFIGURATION_ERROR =
+  "Frontend URL configuration is missing or invalid.";
 
 const generateSetupToken = () => crypto.randomBytes(32).toString("base64url");
+
+const getFrontendOrigin = () => {
+  const configuredOrigin = process.env.CLIENT_ORIGIN?.split(",")[0]?.trim();
+  if (!configuredOrigin) {
+    throw new AppError(FRONTEND_CONFIGURATION_ERROR, 503);
+  }
+
+  let parsedOrigin;
+  try {
+    parsedOrigin = new URL(configuredOrigin);
+  } catch {
+    throw new AppError(FRONTEND_CONFIGURATION_ERROR, 503);
+  }
+
+  if (
+    !["http:", "https:"].includes(parsedOrigin.protocol) ||
+    !parsedOrigin.hostname ||
+    parsedOrigin.username ||
+    parsedOrigin.password ||
+    (parsedOrigin.pathname !== "/" && parsedOrigin.pathname !== "") ||
+    parsedOrigin.search ||
+    parsedOrigin.hash
+  ) {
+    throw new AppError(FRONTEND_CONFIGURATION_ERROR, 503);
+  }
+
+  return parsedOrigin.origin;
+};
+
+const buildAccountSetupUrl = (token) => {
+  const setupUrl = new URL("/setup-account", `${getFrontendOrigin()}/`);
+  setupUrl.searchParams.set("token", token);
+  return setupUrl.toString();
+};
 
 const maskEmail = (email = "") => {
   const [localPart, domainPart] = email.split("@");
@@ -51,12 +87,13 @@ const sendPatientInvitation = async (user) => {
 };
 
 const sendAccountSetupInvitation = async (user, role) => {
-  const origin = (process.env.CLIENT_ORIGIN || "http://localhost:5173").replace(/\/$/, "");
+  // Validate the public destination before replacing the user's active setup token.
+  getFrontendOrigin();
   const token = generateSetupToken();
 
   await createSetupTokenRecord({ userId: user._id, email: user.email, token });
 
-  const setupUrl = `${origin}/setup-account?token=${encodeURIComponent(token)}`;
+  const setupUrl = buildAccountSetupUrl(token);
   const sendInvitationEmail =
     role === "patient" ? sendPatientInvitationEmail : sendDoctorInvitationEmail;
   await sendInvitationEmail({
@@ -89,7 +126,9 @@ const validateSetupToken = async (token) => {
     return { valid: false, message: "This account setup link is invalid or has expired." };
   }
 
-  const user = await User.findById(record.userId).select("email passwordSetupRequired");
+  const user = await User.findById(record.userId).select(
+    "email role passwordSetupRequired"
+  );
   if (!user || user.passwordSetupRequired !== true) {
     return { valid: false, message: "This account setup link has already been used or has expired." };
   }
@@ -97,6 +136,7 @@ const validateSetupToken = async (token) => {
   return {
     valid: true,
     email: maskEmail(record.email),
+    accountType: user.role === "patient" ? "patient" : "staff",
   };
 };
 
@@ -202,6 +242,8 @@ module.exports = {
   SETUP_TOKEN_VALIDITY_MS,
   maskEmail,
   generateSetupToken,
+  getFrontendOrigin,
+  buildAccountSetupUrl,
   sendDoctorInvitation,
   sendPatientInvitation,
   validateSetupToken,

@@ -101,6 +101,12 @@ const activatePatientPortal = async (patientId, actor, request) => {
     try {
       await accountSetupService.sendPatientInvitation(activationUser);
     } catch (error) {
+      if (error.statusCode === 503) {
+        throw new AppError(
+          "The patient record is linked, but the activation email could not be sent because the frontend URL is not configured correctly.",
+          503
+        );
+      }
       throw new AppError(
         "The patient record is linked, but the activation email could not be sent. Resend the invitation from Patients.",
         error.statusCode || 502
